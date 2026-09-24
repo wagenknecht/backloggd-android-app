@@ -25,10 +25,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!--
-                No autoVerify: that needs an assetlinks.json on backloggd.com, which we cannot
-                publish. Users enable this filter manually under "Open by default".
+                Deliberately not a verified App Link: that needs an assetlinks.json on
+                backloggd.com, which we cannot publish. Users enable this filter manually under
+                "Open by default". The explicit false tells lint this is on purpose.
             -->
-            <intent-filter>
+            <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

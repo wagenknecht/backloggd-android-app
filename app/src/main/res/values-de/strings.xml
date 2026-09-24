@@ -1,9 +1,0 @@
-<resources>
-    <string name="error_loading_page">Fehler beim Laden der Seite.\nBitte überprüfen Sie Ihre
-            Internetverbindung.
-    </string>
-    <string name="retry">Erneut versuchen</string>
-    <string name="login_required">Bitte melde dich an, um dein Profil zu sehen.</string>
-    <string name="fetching_username">Profil wird geladen…</string>
-    <string name="feedback_no_email_app">Keine E-Mail-App installiert.</string>
-</resources>
