@@ -1,3 +1,4 @@
+import com.android.build.api.variant.ResValue
 import java.util.Properties
 
 plugins {
@@ -102,6 +103,12 @@ androidComponents {
             changelog.from(rootProject.file("fastlane/metadata/android/en-US/changelogs/$versionCode.txt"))
         }
         variant.sources.assets?.addGeneratedSourceDirectory(bundleChangelog, BundleChangelogTask::outputDir)
+
+        // Launcher shortcuts name their target package literally, and debug builds carry a suffix.
+        variant.resValues.put(
+            variant.makeResValueKey("string", "shortcut_target_package"),
+            variant.applicationId.map { ResValue(it) }
+        )
     }
 }
 
@@ -114,6 +121,7 @@ dependencies {
     implementation(libs.preference)
     implementation(libs.work.runtime)
     implementation(libs.swiperefreshlayout)
+    implementation(libs.core.splashscreen)
     implementation(libs.jsoup)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press shortcuts on the launcher icon. They reuse MainActivity's postLaunchAction routing. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="log_game"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_log"
+        android:shortcutShortLabel="@string/shortcut_log_game_short"
+        android:shortcutLongLabel="@string/shortcut_log_game_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="@string/shortcut_target_package"
+            android:targetClass="de.wagenknecht.backloggd.MainActivity">
+            <extra android:name="postLaunchAction" android:value="log_game" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutShortLabel="@string/shortcut_search_short"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="@string/shortcut_target_package"
+            android:targetClass="de.wagenknecht.backloggd.MainActivity">
+            <extra android:name="postLaunchAction" android:value="search" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="profile"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_profile"
+        android:shortcutShortLabel="@string/shortcut_profile_short"
+        android:shortcutLongLabel="@string/shortcut_profile_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="@string/shortcut_target_package"
+            android:targetClass="de.wagenknecht.backloggd.MainActivity">
+            <extra android:name="postLaunchAction" android:value="profile" />
+        </intent>
+    </shortcut>
+</shortcuts>

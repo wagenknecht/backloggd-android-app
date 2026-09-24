@@ -11,6 +11,7 @@ constraintlayout = "2.2.1"
 preference = "1.2.1"
 workRuntime = "2.11.0"
 swiperefreshlayout = "1.1.0"
+coreSplashscreen = "1.2.0"
 
 [libraries]
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
@@ -23,6 +24,7 @@ activity = { group = "androidx.activity", name = "activity", version.ref = "acti
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 preference = { module = "androidx.preference:preference", version.ref = "preference" }
 work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
+core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "swiperefreshlayout" }
 
 [plugins]

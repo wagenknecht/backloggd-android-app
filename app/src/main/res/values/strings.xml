@@ -36,6 +36,15 @@
     <string name="update_later">Later</string>
     <string name="whats_new_title">What\'s new in %1$s</string>
     <string name="whats_new_dismiss">Got it</string>
+    <string name="shortcut_log_game_short">Log a game</string>
+    <string name="shortcut_log_game_long">Log a game</string>
+    <string name="shortcut_search_short">Search</string>
+    <string name="shortcut_search_long">Search games</string>
+    <string name="shortcut_profile_short">Profile</string>
+    <string name="shortcut_profile_long">My profile</string>
+    <string name="file_chooser_unavailable">No app available to pick a file.</string>
+    <string name="download_started">Downloading %1$s…</string>
+    <string name="download_unsupported">This file cannot be downloaded.</string>
     <string name="notification_channel_name">Backloggd Notifications</string>
     <string name="notification_channel_description">Channel for new backloggd.com notifications</string>
     <string name="notification_title_badge">New Badge</string>

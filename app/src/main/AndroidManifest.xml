@@ -14,16 +14,21 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Backloggd"
+        android:enableOnBackInvokedCallback="true"
         tools:targetApi="36">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Backloggd.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <!--
                 Deliberately not a verified App Link: that needs an assetlinks.json on
                 backloggd.com, which we cannot publish. Users enable this filter manually under

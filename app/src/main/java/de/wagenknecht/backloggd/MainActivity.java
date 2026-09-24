@@ -9,14 +9,22 @@ import static de.wagenknecht.backloggd.ApiConstants.NOTIFICATION_URL;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
+import android.webkit.CookieManager;
+import android.webkit.URLUtil;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -26,6 +34,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -34,6 +43,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.splashscreen.SplashScreen;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -60,7 +70,17 @@ public class MainActivity extends AppCompatActivity {
     private LinearProgressIndicator pageProgress;
     private SwipeRefreshLayout swipeRefresh;
     private boolean receivedError = false;
+    private OnBackPressedCallback backCallback;
+    /** Held while the system file picker is open for an {@code <input type="file">}. */
+    @Nullable
+    private ValueCallback<Uri[]> pendingFileCallback;
+    /** A shortcut action that has to wait until the first page is there to act on. */
+    @Nullable
+    private String pendingPostLaunchAction;
+    private boolean firstPageShown = false;
     private static final String TAG = "MainActivity";
+    /** The splash screen never waits longer than this for the first page. */
+    private static final long SPLASH_MAX_MS = 2000;
 
     private static final String LOG_GAME_JS =
             "(function(){var el=document.getElementById('add-a-game');if(el)el.click();})();";
@@ -110,10 +130,18 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+    private final ActivityResultLauncher<Intent> fileChooserLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), this::deliverChosenFiles);
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
+        // Hold the splash until the first page is drawn, so the start never shows an empty WebView.
+        long splashUntil = SystemClock.uptimeMillis() + SPLASH_MAX_MS;
+        splashScreen.setKeepOnScreenCondition(
+                () -> !firstPageShown && SystemClock.uptimeMillis() < splashUntil);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
 
@@ -141,6 +169,9 @@ public class MainActivity extends AppCompatActivity {
 
         myWeb.getSettings().setJavaScriptEnabled(true);
         myWeb.getSettings().setDomStorageEnabled(true);
+        // The WebView is white until the first paint; match the site instead.
+        myWeb.setBackgroundColor(ContextCompat.getColor(this, R.color.back_primary));
+        myWeb.setDownloadListener(this::startDownload);
 
         retryButton.setOnClickListener(v -> {
             myWeb.setVisibility(View.VISIBLE);
@@ -170,9 +201,16 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                super.onPageCommitVisible(view, url);
+                firstPageShown = true;
+            }
+
+            @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
                 if (request.isForMainFrame()) {
+                    firstPageShown = true;
                     receivedError = true;
                     myWeb.setVisibility(View.GONE);
                     errorLayout.setVisibility(View.VISIBLE);
@@ -189,8 +227,12 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (url != null && isBackloggdHost(Uri.parse(url))) {
                     view.evaluateJavascript(INJECT_CSS_JS, null);
+                    if (pendingPostLaunchAction != null && !receivedError) {
+                        runPendingPostLaunchActionWhenReady(view);
+                    }
                 }
                 updateUiForUrl(url);
+                updateBackCallback();
                 swipeRefresh.setRefreshing(false);
             }
 
@@ -198,6 +240,8 @@ public class MainActivity extends AppCompatActivity {
             public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
                 super.doUpdateVisitedHistory(view, url, isReload);
                 updateUiForUrl(url);
+                // The back/forward list is not updated yet while this runs.
+                view.post(MainActivity.this::updateBackCallback);
             }
         });
 
@@ -213,18 +257,36 @@ public class MainActivity extends AppCompatActivity {
                     pageProgress.setVisibility(View.GONE);
                 }
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePathCallback,
+                                             FileChooserParams params) {
+                return showFileChooser(filePathCallback, params);
+            }
         });
 
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+        // Only enabled while there is something to go back to inside the app. Otherwise the system
+        // handles back itself, which lets the predictive back gesture preview the home screen.
+        backCallback = new OnBackPressedCallback(false) {
             @Override
             public void handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                     drawerLayout.closeDrawer(GravityCompat.START);
                 } else if (myWeb.canGoBack()) {
                     myWeb.goBack();
-                } else {
-                    finish();
                 }
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backCallback);
+        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override
+            public void onDrawerOpened(@NonNull View drawerView) {
+                updateBackCallback();
+            }
+
+            @Override
+            public void onDrawerClosed(@NonNull View drawerView) {
+                updateBackCallback();
             }
         });
 
@@ -270,7 +332,19 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (intent.hasExtra("postLaunchAction")) {
-            runPostLaunchAction(intent.getStringExtra("postLaunchAction"));
+            String postLaunchAction = intent.getStringExtra("postLaunchAction");
+            // Consumed once, so a rotation does not open the same shortcut again.
+            intent.removeExtra("postLaunchAction");
+            if (myWeb.getUrl() == null && ("log_game".equals(postLaunchAction) || "search".equals(postLaunchAction))) {
+                // A launcher shortcut starts with an empty WebView; these act on the loaded page.
+                pendingPostLaunchAction = postLaunchAction;
+                myWeb.loadUrl(BACKLOGGD_URL);
+                return;
+            }
+            runPostLaunchAction(postLaunchAction);
+            if (myWeb.getUrl() == null && "more".equals(postLaunchAction)) {
+                myWeb.loadUrl(BACKLOGGD_URL);
+            }
             return;
         }
         if (myWeb.getUrl() == null) {
@@ -507,6 +581,111 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage(notes)
                 .setPositiveButton(R.string.whats_new_dismiss, null)
                 .show();
+    }
+
+    /**
+     * onPageFinished can fire before the document has a body or the site's scripts are wired up,
+     * and the search field and the log dialog both need them. Until the page reports itself
+     * complete, the action stays pending for the next onPageFinished.
+     */
+    private void runPendingPostLaunchActionWhenReady(WebView view) {
+        view.evaluateJavascript("document.body!==null&&document.readyState==='complete'", ready -> {
+            if (!"true".equals(ready) || pendingPostLaunchAction == null) {
+                return;
+            }
+            String action = pendingPostLaunchAction;
+            pendingPostLaunchAction = null;
+            runPostLaunchAction(action);
+        });
+    }
+
+    private void updateBackCallback() {
+        backCallback.setEnabled(drawerLayout.isDrawerOpen(GravityCompat.START) || myWeb.canGoBack());
+    }
+
+    /** Opens the system picker for an {@code <input type="file">} on the page. */
+    private boolean showFileChooser(ValueCallback<Uri[]> callback, WebChromeClient.FileChooserParams params) {
+        // A new request replaces one that never got an answer; the page must hear back from both.
+        if (pendingFileCallback != null) {
+            pendingFileCallback.onReceiveValue(null);
+        }
+        pendingFileCallback = callback;
+        try {
+            fileChooserLauncher.launch(params.createIntent());
+        } catch (android.content.ActivityNotFoundException e) {
+            Log.w(TAG, "No app can pick a file.", e);
+            pendingFileCallback = null;
+            callback.onReceiveValue(null);
+            Toast.makeText(this, R.string.file_chooser_unavailable, Toast.LENGTH_SHORT).show();
+        }
+        return true;
+    }
+
+    private void deliverChosenFiles(ActivityResult result) {
+        if (pendingFileCallback == null) {
+            return;
+        }
+        Uri[] uris = null;
+        Intent data = result.getData();
+        if (result.getResultCode() == Activity.RESULT_OK && data != null) {
+            // parseResult only knows about a single file; a multi-select arrives as ClipData.
+            ClipData clip = data.getClipData();
+            if (clip != null && clip.getItemCount() > 0) {
+                uris = new Uri[clip.getItemCount()];
+                for (int i = 0; i < clip.getItemCount(); i++) {
+                    uris[i] = clip.getItemAt(i).getUri();
+                }
+            } else {
+                uris = WebChromeClient.FileChooserParams.parseResult(result.getResultCode(), data);
+            }
+        }
+        // null tells the page the picker was cancelled, so it can open it again.
+        pendingFileCallback.onReceiveValue(uris);
+        pendingFileCallback = null;
+    }
+
+    /**
+     * Saves a file the page wants to download to the public Downloads folder. Backloggd downloads
+     * get the session cookies, so ones that need a login work too.
+     */
+    private void startDownload(String url, String userAgent, String contentDisposition,
+                               String mimeType, long contentLength) {
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
+            // blob: and data: URLs only exist inside the page; DownloadManager cannot fetch them.
+            Log.w(TAG, "Cannot download " + scheme + " URL.");
+            Toast.makeText(this, R.string.download_unsupported, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            // Writing to the public Downloads folder needs a storage permission before Android 10.
+            openExternally(uri);
+            return;
+        }
+
+        // For the catch-all type, guessFileName would swap a real extension for ".bin".
+        String typeHint = "application/octet-stream".equalsIgnoreCase(mimeType) ? null : mimeType;
+        String fileName = URLUtil.guessFileName(url, contentDisposition, typeHint);
+        DownloadManager.Request request = new DownloadManager.Request(uri)
+                .setTitle(fileName)
+                .setMimeType(mimeType)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                .addRequestHeader("User-Agent", userAgent);
+        // The login cookie only ever goes to Backloggd itself.
+        String cookies = isBackloggdHost(uri) ? CookieManager.getInstance().getCookie(url) : null;
+        if (cookies != null && !cookies.isEmpty()) {
+            request.addRequestHeader("Cookie", cookies);
+        }
+
+        DownloadManager downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        if (downloadManager == null) {
+            openExternally(uri);
+            return;
+        }
+        downloadManager.enqueue(request);
+        Toast.makeText(this, getString(R.string.download_started, fileName), Toast.LENGTH_SHORT).show();
     }
 
     /** Hands a URI to another app, telling the user when nothing can handle it. */

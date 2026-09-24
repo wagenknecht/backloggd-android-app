@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/back_primary" />
+    <foreground>
+        <inset android:drawable="@drawable/ic_shortcut_profile_glyph" android:inset="33dp" />
+    </foreground>
+</adaptive-icon>

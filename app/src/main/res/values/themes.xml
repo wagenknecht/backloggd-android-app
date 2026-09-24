@@ -17,6 +17,13 @@
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
     </style>
 
+    <!-- Shown while the app starts; the app theme takes over once MainActivity is ready. -->
+    <style name="Theme.Backloggd.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/back_primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Backloggd</item>
+    </style>
+
     <style name="Widget.App.Button" parent="Widget.MaterialComponents.Button">
         <item name="backgroundTint">@color/back_pink_dk</item>
         <item name="android:textColor">@color/white</item>
