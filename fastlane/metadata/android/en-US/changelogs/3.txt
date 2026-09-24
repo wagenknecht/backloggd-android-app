@@ -1,0 +1,5 @@
+• The update dialog now shows what's new in the next version
+• After updating, the app shows what changed once
+• Wishlist reminders keep running reliably after a restart
+• Image downloads no longer hang on a bad connection
+• Links to other apps and sites open more reliably

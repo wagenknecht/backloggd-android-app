@@ -2,9 +2,13 @@ package de.wagenknecht.backloggd.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.Collections;
 
 public class UpdateCheckerTest {
 
@@ -47,6 +51,35 @@ public class UpdateCheckerTest {
         String result = UpdateChecker.toPlainText(huge.toString());
         assertTrue("Should be capped, was " + result.length(), result.length() <= 2001);
         assertTrue("Should be marked as cut off", result.endsWith("…"));
+    }
+
+    @Test
+    public void latestChangelog_comparesVersionCodesNumerically() {
+        assertEquals("10.txt", UpdateChecker.latestChangelogName(Arrays.asList("3.txt", "10.txt", "9.txt")));
+    }
+
+    @Test
+    public void latestChangelog_ignoresOtherFiles() {
+        assertEquals("3.txt", UpdateChecker.latestChangelogName(
+                Arrays.asList("default.txt", "3.txt", "4.md", "README", "12.txt.bak")));
+    }
+
+    @Test
+    public void latestChangelog_isNullWithoutChangelogs() {
+        assertNull(UpdateChecker.latestChangelogName(Collections.emptyList()));
+        assertNull(UpdateChecker.latestChangelogName(Collections.singletonList("default.txt")));
+    }
+
+    @Test
+    public void changelog_keepsTextAndEvensOutLineEndings() {
+        assertEquals("• one\n• two\n\n• three",
+                UpdateChecker.cleanChangelog("\r\n• one\r\n• two\r\n\r\n\r\n\r\n• three\r\n"));
+    }
+
+    @Test
+    public void changelog_isNotTreatedAsMarkdown() {
+        assertEquals("• keeps *stars* and [brackets]",
+                UpdateChecker.cleanChangelog("• keeps *stars* and [brackets]\n"));
     }
 
     @Test

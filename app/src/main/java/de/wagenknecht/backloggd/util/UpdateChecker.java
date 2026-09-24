@@ -1,5 +1,6 @@
 package de.wagenknecht.backloggd.util;
 
+import static de.wagenknecht.backloggd.ApiConstants.GITHUB_CHANGELOGS_API_URL;
 import static de.wagenknecht.backloggd.ApiConstants.GITHUB_LATEST_RELEASE_API_URL;
 import static de.wagenknecht.backloggd.ApiConstants.GITHUB_RELEASE_BY_TAG_API_URL;
 
@@ -22,11 +23,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -38,6 +45,9 @@ public final class UpdateChecker {
     private static final String TAG = "UpdateChecker";
     private static final int TIMEOUT_MS = 15000;
     private static final String PREF_LAST_SEEN_VERSION = "last_seen_version";
+    /** Written by the bundleChangelog Gradle task from fastlane/.../changelogs/<versionCode>.txt. */
+    private static final String BUNDLED_CHANGELOG_ASSET = "changelog.txt";
+    private static final Pattern CHANGELOG_FILE = Pattern.compile("(\\d+)\\.txt");
 
     /** A newer release than the installed one. */
     public static final class Release {
@@ -94,8 +104,9 @@ public final class UpdateChecker {
     }
 
     /**
-     * Looks up the release notes for the version that is installed right now. Stays silent when
-     * the release cannot be found — a locally built version has no matching tag on GitHub.
+     * Looks up the release notes for the version that is installed right now. The changelog
+     * bundled into the APK wins; without one, the notes of the matching GitHub release are used.
+     * Stays silent when neither exists — a locally built version has no matching tag on GitHub.
      */
     public static void fetchInstalledReleaseNotes(@NonNull Context context, @NonNull NotesCallback callback) {
         String installed = getInstalledVersion(context);
@@ -103,18 +114,23 @@ public final class UpdateChecker {
             return;
         }
 
+        Context appContext = context.getApplicationContext();
         Handler mainHandler = new Handler(Looper.getMainLooper());
         new Thread(() -> {
-            JSONObject releaseJson = fetchRelease(GITHUB_RELEASE_BY_TAG_API_URL + installed);
-            if (releaseJson == null) {
-                return;
+            String notes = readBundledChangelog(appContext);
+            if (notes == null) {
+                JSONObject releaseJson = fetchRelease(GITHUB_RELEASE_BY_TAG_API_URL + installed);
+                if (releaseJson == null) {
+                    return;
+                }
+                notes = toPlainText(releaseJson.optString("body", ""));
             }
-            String notes = toPlainText(releaseJson.optString("body", ""));
             if (notes.isEmpty()) {
                 Log.d(TAG, "Release " + installed + " has no notes to show.");
                 return;
             }
-            mainHandler.post(() -> callback.onReleaseNotes(installed, notes));
+            String shownNotes = notes;
+            mainHandler.post(() -> callback.onReleaseNotes(installed, shownNotes));
         }).start();
     }
 
@@ -148,10 +164,13 @@ public final class UpdateChecker {
                 return;
             }
 
-            Release release = new Release(
-                    latestVersion,
-                    findApkAssetUrl(releaseJson),
-                    toPlainText(releaseJson.optString("body", "")));
+            // Releases up to 2.0 predate the changelog files; their notes come from the release text.
+            String changelog = fetchChangelogAt(latestVersion);
+            String notes = changelog != null
+                    ? changelog
+                    : toPlainText(releaseJson.optString("body", ""));
+
+            Release release = new Release(latestVersion, findApkAssetUrl(releaseJson), notes);
             mainHandler.post(() -> callback.onUpdateAvailable(release));
         }).start();
     }
@@ -177,6 +196,79 @@ public final class UpdateChecker {
     @WorkerThread
     @Nullable
     private static JSONObject fetchRelease(String url) {
+        String body = fetchText(url);
+        if (body == null) {
+            return null;
+        }
+        try {
+            return new JSONObject(body);
+        } catch (JSONException e) {
+            Log.e(TAG, "Unreadable release JSON from " + url, e);
+            return null;
+        }
+    }
+
+    /**
+     * Fetches the changelog that the given tag carries in the repo, i.e. the file with the
+     * highest versionCode. Null when the tag has no changelog files or the lookup fails.
+     */
+    @WorkerThread
+    @Nullable
+    private static String fetchChangelogAt(@NonNull String tag) {
+        String listing = fetchText(GITHUB_CHANGELOGS_API_URL + tag);
+        if (listing == null) {
+            return null;
+        }
+
+        Map<String, String> downloadUrls = new HashMap<>();
+        try {
+            JSONArray entries = new JSONArray(listing);
+            for (int i = 0; i < entries.length(); i++) {
+                JSONObject entry = entries.optJSONObject(i);
+                if (entry == null) {
+                    continue;
+                }
+                String downloadUrl = entry.optString("download_url", "");
+                if (!downloadUrl.isEmpty()) {
+                    downloadUrls.put(entry.optString("name", ""), downloadUrl);
+                }
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Unreadable changelog listing for " + tag, e);
+            return null;
+        }
+
+        String name = latestChangelogName(downloadUrls.keySet());
+        if (name == null) {
+            return null;
+        }
+        String changelog = fetchText(downloadUrls.get(name));
+        if (changelog == null) {
+            return null;
+        }
+        String notes = cleanChangelog(changelog);
+        return notes.isEmpty() ? null : notes;
+    }
+
+    /** The changelog bundled into this APK, or null when the build had none. */
+    @WorkerThread
+    @Nullable
+    private static String readBundledChangelog(@NonNull Context context) {
+        try (InputStream in = context.getAssets().open(BUNDLED_CHANGELOG_ASSET)) {
+            String notes = cleanChangelog(readAll(in));
+            return notes.isEmpty() ? null : notes;
+        } catch (FileNotFoundException e) {
+            return null;
+        } catch (IOException e) {
+            Log.e(TAG, "Could not read the bundled changelog.", e);
+            return null;
+        }
+    }
+
+    /** Fetches a URL as text, or null if that fails for any reason. */
+    @WorkerThread
+    @Nullable
+    private static String fetchText(String url) {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(url).openConnection();
@@ -188,27 +280,68 @@ public final class UpdateChecker {
 
             int status = connection.getResponseCode();
             if (status != HttpURLConnection.HTTP_OK) {
-                Log.w(TAG, "Update check returned status " + status);
+                Log.w(TAG, "Request to " + url + " returned status " + status);
                 return null;
             }
 
-            StringBuilder body = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    body.append(line);
-                }
+            try (InputStream in = connection.getInputStream()) {
+                return readAll(in);
             }
-            return new JSONObject(body.toString());
-        } catch (IOException | JSONException e) {
-            Log.e(TAG, "Error checking for updates", e);
+        } catch (IOException e) {
+            Log.e(TAG, "Request to " + url + " failed", e);
             return null;
         } finally {
             if (connection != null) {
                 connection.disconnect();
             }
         }
+    }
+
+    private static String readAll(InputStream in) throws IOException {
+        StringBuilder text = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                text.append(line).append('\n');
+            }
+        }
+        return text.toString();
+    }
+
+    /**
+     * Picks the changelog of the newest version from a listing of file names, comparing the
+     * versionCodes numerically so "10.txt" beats "9.txt". Other files are ignored.
+     */
+    @VisibleForTesting
+    @Nullable
+    static String latestChangelogName(@NonNull Collection<String> names) {
+        String latest = null;
+        long latestCode = -1;
+        for (String name : names) {
+            Matcher matcher = CHANGELOG_FILE.matcher(name);
+            if (!matcher.matches()) {
+                continue;
+            }
+            long code;
+            try {
+                code = Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            if (code > latestCode) {
+                latestCode = code;
+                latest = name;
+            }
+        }
+        return latest;
+    }
+
+    /** Changelogs are plain text already; they only need their line endings and length evened out. */
+    @VisibleForTesting
+    static String cleanChangelog(String changelog) {
+        String text = changelog.replace("\r\n", "\n");
+        text = BLANK_LINES.matcher(text).replaceAll("\n\n");
+        return capLength(text.trim());
     }
 
     /** Direct download URL of the release's APK asset, or null when it has none. */
@@ -258,10 +391,12 @@ public final class UpdateChecker {
         text = LIST_MARKER.matcher(text).replaceAll("• ");
         text = EMPHASIS.matcher(text).replaceAll("$2");
         text = BLANK_LINES.matcher(text).replaceAll("\n\n");
-        text = text.trim();
+        return capLength(text.trim());
+    }
 
+    private static String capLength(String text) {
         if (text.length() > MAX_NOTES_CHARS) {
-            text = text.substring(0, MAX_NOTES_CHARS).trim() + "…";
+            return text.substring(0, MAX_NOTES_CHARS).trim() + "…";
         }
         return text;
     }

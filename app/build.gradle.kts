@@ -13,6 +13,32 @@ val localProperties = Properties().apply {
 }
 val releaseStoreFile: String? = localProperties.getProperty("release.storeFile")
 
+/**
+ * Copies the changelog of the version being built into the APK as changelog.txt, so the app can
+ * show it after an update without asking GitHub. A missing changelog only produces a warning.
+ */
+abstract class BundleChangelogTask : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val changelog: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun bundle() {
+        val target = outputDir.get().asFile
+        target.deleteRecursively()
+        target.mkdirs()
+        val source = changelog.files.firstOrNull { it.isFile }
+        if (source == null) {
+            logger.warn("No changelog found at ${changelog.files.joinToString()}")
+            return
+        }
+        source.copyTo(File(target, "changelog.txt"))
+    }
+}
+
 android {
     namespace = "de.wagenknecht.backloggd"
     compileSdk = 36
@@ -25,8 +51,9 @@ android {
         applicationId = "de.wagenknecht.backloggd"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0"
+        // Raise versionCode with every release and add changelogs/<versionCode>.txt under fastlane/.
+        versionCode = 3
+        versionName = "2.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -62,6 +89,19 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+// Changelogs follow the F-Droid layout: one plain-text file per versionCode, at most 500 characters.
+androidComponents {
+    onVariants { variant ->
+        val versionCode = android.defaultConfig.versionCode
+        val bundleChangelog = tasks.register<BundleChangelogTask>(
+            "bundle${variant.name.replaceFirstChar { it.uppercase() }}Changelog"
+        ) {
+            changelog.from(rootProject.file("fastlane/metadata/android/en-US/changelogs/$versionCode.txt"))
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(bundleChangelog, BundleChangelogTask::outputDir)
     }
 }
 
