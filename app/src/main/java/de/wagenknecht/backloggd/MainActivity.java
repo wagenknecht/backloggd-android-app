@@ -362,15 +362,20 @@ public class MainActivity extends AppCompatActivity {
         Uri data = intent.getData();
 
         if (Intent.ACTION_VIEW.equals(action) && data != null) {
-            myWeb.loadUrl(data.toString());
-            return;
+            if (isSafeToLoad(data.toString())) {
+                myWeb.loadUrl(data.toString());
+                return;
+            }
+            Log.w(TAG, "Ignoring a link that is not a Backloggd page: " + data);
         }
         if (intent.hasExtra("urlToLoad")) {
             String urlToLoad = intent.getStringExtra("urlToLoad");
-            if (urlToLoad != null) {
+            intent.removeExtra("urlToLoad");
+            if (isSafeToLoad(urlToLoad)) {
                 myWeb.loadUrl(urlToLoad);
+                return;
             }
-            return;
+            Log.w(TAG, "Ignoring urlToLoad that is not a Backloggd page: " + urlToLoad);
         }
         if (intent.hasExtra("postLaunchAction")) {
             String postLaunchAction = intent.getStringExtra("postLaunchAction");
@@ -421,6 +426,23 @@ public class MainActivity extends AppCompatActivity {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
             }
         }
+    }
+
+    /**
+     * MainActivity is exported, so any app on the device can hand it a URL, either as a VIEW
+     * intent aimed at it directly (which skips the intent filter) or as the urlToLoad extra. Only
+     * Backloggd pages over https may load into the WebView that holds the login; another site or a
+     * javascript: URL would run with the user's session. Backslashes and user info are refused
+     * because Android and Chromium parse them differently, e.g. https://evil.com\@backloggd.com.
+     */
+    private static boolean isSafeToLoad(@Nullable String url) {
+        if (url == null || url.indexOf('\\') >= 0) {
+            return false;
+        }
+        Uri uri = Uri.parse(url);
+        return "https".equalsIgnoreCase(uri.getScheme())
+                && uri.getUserInfo() == null
+                && isBackloggdHost(uri);
     }
 
     private static boolean isBackloggdHost(Uri uri) {
