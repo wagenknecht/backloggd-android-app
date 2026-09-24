@@ -16,6 +16,7 @@ import android.util.Log;
 import android.webkit.CookieManager;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -30,13 +31,14 @@ import androidx.work.WorkerParameters;
 import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
@@ -51,6 +53,8 @@ public class WishlistCheckerWorker extends Worker {
     private static final String TAG = "WishlistCheckerWorker";
     private static final String CHANNEL_ID = "BACKLOGGD_WISHLIST_RELEASE";
     public static final String WORK_NAME = "WishlistChecker";
+    /** Holds one column per game on the wishlist page. */
+    private static final String GAMES_CONTAINER_ID = "user_games";
 
     public WishlistCheckerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -106,19 +110,20 @@ public class WishlistCheckerWorker extends Worker {
                 return Result.retry();
             }
             Document doc = wishlistResponse.parse();
-            Elements gameElements = doc.select("#user-games-library-container .rating-hover");
+            if (doc.getElementById(GAMES_CONTAINER_ID) == null) {
+                // Without the container this is not the page we expect, e.g. after a redesign.
+                Log.w(TAG, "Wishlist page has no #" + GAMES_CONTAINER_ID + "; its markup may have changed. Title: "
+                        + doc.title());
+            }
+            List<WishlistGame> games = parseWishlist(doc);
 
-            if (gameElements.isEmpty()) {
+            if (games.isEmpty()) {
                 Log.d(TAG, "No games found on the wishlist page for the current year.");
             } else {
-                for (Element gameElement : gameElements) {
-                    String gameTitle = gameElement.select(".game-text-centered").text();
-                    String releaseDateStr = gameElement.select(".release-below p").text();
-                    String imageUrl = gameElement.select("img.card-img").attr("src");
-
-                    if (gameTitle.isEmpty() || releaseDateStr.isEmpty()) {
-                        continue;
-                    }
+                for (WishlistGame game : games) {
+                    String gameTitle = game.title;
+                    String releaseDateStr = game.releaseDate;
+                    String imageUrl = game.imageUrl;
 
                     if (isReleasedToday(releaseDateStr)) {
                         SharedPreferences releasePrefs = context.getSharedPreferences("wishlist_release_dates", Context.MODE_PRIVATE);
@@ -148,6 +153,51 @@ public class WishlistCheckerWorker extends Worker {
         return Result.success();
     }
 
+    /** One game on the wishlist page. */
+    @VisibleForTesting
+    static final class WishlistGame {
+        final String title;
+        /** As the site shows it: "Sep 24, 2026", or only "2026" / "2026 Q3" without an exact day. */
+        final String releaseDate;
+        final String imageUrl;
+
+        WishlistGame(String title, String releaseDate, String imageUrl) {
+            this.title = title;
+            this.releaseDate = releaseDate;
+            this.imageUrl = imageUrl;
+        }
+    }
+
+    /**
+     * Reads the games off the wishlist page. Each game is a column in #user_games holding a cover
+     * card, the title and a plain paragraph with the release date. The column also carries a
+     * hidden "more" menu, whose texts are skipped.
+     */
+    @VisibleForTesting
+    static List<WishlistGame> parseWishlist(Document doc) {
+        List<WishlistGame> games = new ArrayList<>();
+        for (Element column : doc.select("#" + GAMES_CONTAINER_ID + " .col-cus-user-games")) {
+            Element cover = column.selectFirst("img.card-img");
+            String title = column.select(".game-text-centered").text();
+            if (title.isEmpty() && cover != null) {
+                title = cover.attr("alt");
+            }
+
+            String releaseDate = "";
+            for (Element paragraph : column.select("p")) {
+                if (paragraph.closest("[id^=more-button-container]") == null) {
+                    releaseDate = paragraph.text();
+                    break;
+                }
+            }
+
+            if (!title.isEmpty() && !releaseDate.isEmpty()) {
+                games.add(new WishlistGame(title, releaseDate, cover != null ? cover.attr("src") : ""));
+            }
+        }
+        return games;
+    }
+
     private boolean isReleasedToday(String releaseDateStr) {
         SimpleDateFormat formatWithComma = new SimpleDateFormat("MMM dd, yyyy", Locale.ENGLISH);
         SimpleDateFormat formatWithoutComma = new SimpleDateFormat("MMM dd yyyy", Locale.ENGLISH);
@@ -159,7 +209,8 @@ public class WishlistCheckerWorker extends Worker {
             try {
                 releaseDate = formatWithoutComma.parse(releaseDateStr);
             } catch (ParseException e2) {
-                Log.w(TAG, "Could not parse date: " + releaseDateStr);
+                // Normal for games with only a year or quarter ("2026", "2026 Q3") so far.
+                Log.d(TAG, "No exact release date: " + releaseDateStr);
                 return false;
             }
         }
