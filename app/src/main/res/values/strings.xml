@@ -61,6 +61,7 @@
     <string name="notification_title_badge">New Badge</string>
     <string name="notification_title_follower">New Follower</string>
     <string name="notification_title_like">New Like</string>
+    <string name="notification_title_comment">New Comment</string>
     <string name="notification_title_default">Backloggd</string>
     <string name="wishlist_channel_name">Wishlist Game Releases</string>
     <string name="wishlist_channel_description">Notifications for when games on your wishlist get a release date.</string>

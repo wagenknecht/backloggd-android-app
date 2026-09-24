@@ -15,6 +15,8 @@ import android.util.Log;
 import android.webkit.CookieManager;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -28,12 +30,14 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import de.wagenknecht.backloggd.MainActivity;
 import de.wagenknecht.backloggd.R;
@@ -112,34 +116,24 @@ public class NotificationCheckWorker extends Worker {
             }
             Document doc = response.parse();
 
-            Elements unreadNotifications = doc.select(".notification.unread");
+            if (doc.select(".notification").isEmpty()) {
+                // Not even read notifications: likely not the page we expect, e.g. after a redesign.
+                Log.w(TAG, "Notifications page has no .notification elements; its markup may have changed. Title: "
+                        + doc.title());
+            }
+            List<UnreadNotification> unreadNotifications = parseUnread(doc);
 
             if (!unreadNotifications.isEmpty()) {
                 Log.i(TAG, unreadNotifications.size() + " unread notifications found!");
-                for (Element notification : unreadNotifications) {
-                    String notificationText = notification.select(".notification-body p").text();
-                    String imageUrl = notification.select(".avatar img").attr("src");
-                    String iconClass = notification.select(".notification-icon i").attr("class");
-                    int titleRes;
-                    if (iconClass.contains("fa-star")) {
-                        titleRes = R.string.notification_title_badge;
-                    } else if (iconClass.contains("fa-user-friends")) {
-                        titleRes = R.string.notification_title_follower;
-                    } else if (iconClass.contains("fa-heart")) {
-                        titleRes = R.string.notification_title_like;
-                    } else {
-                        titleRes = R.string.notification_title_default;
-                    }
-                    String title = getApplicationContext().getString(titleRes);
+                for (UnreadNotification notification : unreadNotifications) {
+                    String title = getApplicationContext().getString(notification.titleRes);
 
                     Bitmap image = null;
-                    if (imageUrl != null && !imageUrl.isEmpty()) {
-                        image = ImageDownloader.downloadDownsampled(imageUrl);
+                    if (!notification.imageUrl.isEmpty()) {
+                        image = ImageDownloader.downloadDownsampled(notification.imageUrl);
                     }
 
-                    if (!notificationText.isEmpty()) {
-                        showPushNotification(title, notificationText, notificationText.hashCode(), image);
-                    }
+                    showPushNotification(title, notification.text, notification.text.hashCode(), image);
                 }
             } else {
                 Log.d(TAG, "No unread notifications.");
@@ -151,6 +145,64 @@ public class NotificationCheckWorker extends Worker {
             Log.e(TAG, "Failed to fetch or parse notifications page.", e);
             return Result.failure();
         }
+    }
+
+    /** One unread entry on the notifications page. */
+    @VisibleForTesting
+    static final class UnreadNotification {
+        /** E.g. "LordLica followed you". */
+        final String text;
+        /** The other user's avatar; empty when there is none. */
+        final String imageUrl;
+        @StringRes
+        final int titleRes;
+
+        UnreadNotification(String text, String imageUrl, @StringRes int titleRes) {
+            this.text = text;
+            this.imageUrl = imageUrl;
+            this.titleRes = titleRes;
+        }
+    }
+
+    /**
+     * Reads the unread entries off the notifications page. Each entry is a .notification row;
+     * unread ones carry an extra "unread" class, which also lights up their indicator dot.
+     */
+    @VisibleForTesting
+    static List<UnreadNotification> parseUnread(Document doc) {
+        List<UnreadNotification> notifications = new ArrayList<>();
+        for (Element notification : doc.select(".notification.unread")) {
+            String text = notification.select(".notification-body p").text();
+            if (text.isEmpty()) {
+                continue;
+            }
+            notifications.add(new UnreadNotification(
+                    text,
+                    notification.select(".avatar img").attr("src"),
+                    titleFor(notification.select(".notification-icon i").attr("class"))));
+        }
+        return notifications;
+    }
+
+    /** Picks the notification title from the entry's Font Awesome icon. */
+    @VisibleForTesting
+    @StringRes
+    static int titleFor(String iconClass) {
+        List<String> classes = Arrays.asList(iconClass.trim().split("\\s+"));
+        if (classes.contains("fa-star")) {
+            return R.string.notification_title_badge;
+        }
+        // Font Awesome 6 renamed fa-user-friends to fa-user-group; the site now uses the new name.
+        if (classes.contains("fa-user-group") || classes.contains("fa-user-friends")) {
+            return R.string.notification_title_follower;
+        }
+        if (classes.contains("fa-heart")) {
+            return R.string.notification_title_like;
+        }
+        if (classes.contains("fa-message") || classes.contains("fa-comment")) {
+            return R.string.notification_title_comment;
+        }
+        return R.string.notification_title_default;
     }
 
     private void showPushNotification(String title, String contentText, int notificationId, Bitmap image) {
