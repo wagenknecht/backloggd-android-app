@@ -83,6 +83,23 @@ public class UpdateCheckerTest {
     }
 
     @Test
+    public void updateFromVersionThatNeverRecordedItself_isAnUpdate() {
+        assertTrue(UpdateChecker.wasUpdated("2.0.1", null, 1000L, 5000L));
+    }
+
+    @Test
+    public void freshInstall_isNotAnUpdate() {
+        assertFalse(UpdateChecker.wasUpdated("2.0.1", null, 1000L, 1000L));
+    }
+
+    @Test
+    public void recordedVersion_decidesByVersionNumber() {
+        assertTrue(UpdateChecker.wasUpdated("2.0.1", "2.0", 1000L, 5000L));
+        // Reinstalling the same version moves the update time but is no update.
+        assertFalse(UpdateChecker.wasUpdated("2.0.1", "2.0.1", 1000L, 5000L));
+    }
+
+    @Test
     public void sameVersion_isNotNewer() {
         assertFalse(UpdateChecker.isNewerVersion("2.0", "2.0"));
         assertFalse(UpdateChecker.isNewerVersion("2.0", "2.0.0"));

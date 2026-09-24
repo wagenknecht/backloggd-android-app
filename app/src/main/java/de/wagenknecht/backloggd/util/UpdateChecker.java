@@ -84,13 +84,27 @@ public final class UpdateChecker {
      * fresh install, so a new user is not greeted with notes for a version they never ran.
      */
     public static boolean wasUpdatedSinceLastLaunch(@NonNull Context context) {
-        String installed = getInstalledVersion(context);
-        if (installed == null) {
+        PackageInfo info = getPackageInfo(context);
+        if (info == null || info.versionName == null) {
             return false;
         }
         String lastSeen = PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(PREF_LAST_SEEN_VERSION, null);
-        return lastSeen != null && isNewerVersion(installed, lastSeen);
+        return wasUpdated(info.versionName, lastSeen, info.firstInstallTime, info.lastUpdateTime);
+    }
+
+    /**
+     * Versions up to 2.0 never recorded themselves, so an update from one of them arrives without
+     * a last seen version. Android still tells it apart from a fresh install: only an update
+     * moves the last update time past the first install time.
+     */
+    @VisibleForTesting
+    static boolean wasUpdated(@NonNull String installed, @Nullable String lastSeen,
+                              long firstInstallTime, long lastUpdateTime) {
+        if (lastSeen == null) {
+            return lastUpdateTime > firstInstallTime;
+        }
+        return isNewerVersion(installed, lastSeen);
     }
 
     /** Records the installed version, so the next update is recognised as one. */
@@ -177,9 +191,14 @@ public final class UpdateChecker {
 
     @Nullable
     private static String getInstalledVersion(@NonNull Context context) {
+        PackageInfo info = getPackageInfo(context);
+        return info != null ? info.versionName : null;
+    }
+
+    @Nullable
+    private static PackageInfo getPackageInfo(@NonNull Context context) {
         try {
-            PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
-            return info.versionName;
+            return context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
         } catch (PackageManager.NameNotFoundException e) {
             Log.e(TAG, "Could not read the installed version.", e);
             return null;
