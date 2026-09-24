@@ -33,6 +33,12 @@
         <item name="colorOutline">@color/back_field_border_hover</item>
         <item name="colorOutlineVariant">@color/back_field_border</item>
         <item name="colorError">@color/back_type_abandoned</item>
+        <!-- Checked radio buttons and other framework controls, pink like the rest. -->
+        <item name="colorControlActivated">@color/back_pink</item>
+        <!-- Snackbars: light on the dark page, as Material 3 intends. -->
+        <item name="colorSurfaceInverse">@color/back_on_surface</item>
+        <item name="colorOnSurfaceInverse">@color/back_primary</item>
+        <item name="colorPrimaryInverse">@color/back_pink_dk</item>
 
         <!-- The container colours above are final; no pink tint on raised surfaces. -->
         <item name="elevationOverlayEnabled">false</item>

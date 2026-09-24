@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
@@ -15,6 +16,7 @@ import androidx.preference.PreferenceManager;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
 
@@ -109,6 +111,32 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 return true;
             });
         }
+    }
+
+    /**
+     * The preference library shows lists in a plain AppCompat dialog; this swaps in the Material
+     * one, so it matches the rest of the app.
+     */
+    @Override
+    public void onDisplayPreferenceDialog(@NonNull Preference preference) {
+        if (!(preference instanceof ListPreference)) {
+            super.onDisplayPreferenceDialog(preference);
+            return;
+        }
+        ListPreference list = (ListPreference) preference;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(list.getTitle())
+                .setSingleChoiceItems(list.getEntries(), list.findIndexOfValue(list.getValue()),
+                        (dialog, which) -> {
+                            String value = list.getEntryValues()[which].toString();
+                            // Runs the change listener, which reschedules the worker.
+                            if (list.callChangeListener(value)) {
+                                list.setValue(value);
+                            }
+                            dialog.dismiss();
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void listenForReminderTime(MaterialTimePicker picker, Preference preference) {

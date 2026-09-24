@@ -54,8 +54,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.google.android.material.snackbar.Snackbar;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Toast;
 
 import de.wagenknecht.backloggd.util.SystemBars;
 import de.wagenknecht.backloggd.util.UpdateChecker;
@@ -483,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
             action.run(cached);
             return;
         }
-        Toast.makeText(this, R.string.fetching_username, Toast.LENGTH_SHORT).show();
+        showMessage(R.string.fetching_username);
         UsernameHelper.fetchAsync(this, username -> {
             if (isFinishing() || isDestroyed()) return;
             if (username != null) {
@@ -548,7 +548,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     startActivity(feedback);
                 } catch (android.content.ActivityNotFoundException e) {
-                    Toast.makeText(this, R.string.feedback_no_email_app, Toast.LENGTH_SHORT).show();
+                    showMessage(R.string.feedback_no_email_app);
                 }
             } else if (id == R.id.drawer_about) {
                 showAboutDialog();
@@ -683,7 +683,7 @@ public class MainActivity extends AppCompatActivity {
             Log.w(TAG, "No app can pick a file.", e);
             pendingFileCallback = null;
             callback.onReceiveValue(null);
-            Toast.makeText(this, R.string.file_chooser_unavailable, Toast.LENGTH_SHORT).show();
+            showMessage(R.string.file_chooser_unavailable);
         }
         return true;
     }
@@ -722,7 +722,7 @@ public class MainActivity extends AppCompatActivity {
         if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
             // blob: and data: URLs only exist inside the page; DownloadManager cannot fetch them.
             Log.w(TAG, "Cannot download " + scheme + " URL.");
-            Toast.makeText(this, R.string.download_unsupported, Toast.LENGTH_SHORT).show();
+            showMessage(R.string.download_unsupported);
             return;
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -752,7 +752,25 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         downloadManager.enqueue(request);
-        Toast.makeText(this, getString(R.string.download_started, fileName), Toast.LENGTH_SHORT).show();
+        snackbar(getString(R.string.download_started, fileName))
+                .setAction(R.string.download_show, v -> {
+                    try {
+                        startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
+                    } catch (android.content.ActivityNotFoundException e) {
+                        Log.w(TAG, "No app shows the downloads list.", e);
+                    }
+                })
+                .show();
+    }
+
+    private void showMessage(@StringRes int text) {
+        snackbar(getString(text)).show();
+    }
+
+    /** Material's replacement for a toast: above the bottom nav, in the app's colours. */
+    private Snackbar snackbar(CharSequence text) {
+        return Snackbar.make(findViewById(R.id.contentFrame), text, Snackbar.LENGTH_SHORT)
+                .setAnchorView(bottomNav);
     }
 
     /** Hands a URI to another app, telling the user when nothing can handle it. */
@@ -761,7 +779,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(Intent.ACTION_VIEW, uri));
         } catch (android.content.ActivityNotFoundException e) {
             Log.w(TAG, "No app can handle " + uri, e);
-            Toast.makeText(this, R.string.no_app_for_link, Toast.LENGTH_SHORT).show();
+            showMessage(R.string.no_app_for_link);
         }
     }
 }

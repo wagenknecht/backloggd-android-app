@@ -54,6 +54,7 @@
     <string name="shortcut_profile_long">My profile</string>
     <string name="file_chooser_unavailable">No app available to pick a file.</string>
     <string name="download_started">Downloading %1$s…</string>
+    <string name="download_show">Show</string>
     <string name="download_unsupported">This file cannot be downloaded.</string>
     <string name="notification_channel_name">Backloggd Notifications</string>
     <string name="notification_channel_description">Channel for new backloggd.com notifications</string>
