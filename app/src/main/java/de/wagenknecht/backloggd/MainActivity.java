@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.URLUtil;
@@ -39,23 +40,24 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.splashscreen.SplashScreen;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
+import de.wagenknecht.backloggd.util.SystemBars;
 import de.wagenknecht.backloggd.util.UpdateChecker;
 import de.wagenknecht.backloggd.util.UsernameHelper;
 import de.wagenknecht.backloggd.worker.NotificationCheckWorker;
@@ -82,6 +84,31 @@ public class MainActivity extends AppCompatActivity {
     /** The splash screen never waits longer than this for the first page. */
     private static final long SPLASH_MAX_MS = 2000;
 
+    /** One entry of the About dialog. */
+    private static final class AboutLink {
+        @StringRes
+        final int label;
+        final String url;
+
+        AboutLink(@StringRes int label, String url) {
+            this.label = label;
+            this.url = url;
+        }
+    }
+
+    /** The links of the site's hidden footer, plus this app's own page. */
+    private static final AboutLink[] ABOUT_LINKS = {
+            new AboutLink(R.string.about_this_app, GITHUB_REPO_URL),
+            new AboutLink(R.string.about_backloggd, BACKLOGGD_URL + "/about/"),
+            new AboutLink(R.string.about_contact, BACKLOGGD_URL + "/contact/"),
+            new AboutLink(R.string.about_backers, BACKLOGGD_URL + "/backers/"),
+            new AboutLink(R.string.about_roadmap, BACKLOGGD_URL + "/roadmap/"),
+            new AboutLink(R.string.about_terms, BACKLOGGD_URL + "/about/terms-of-service/"),
+            new AboutLink(R.string.about_privacy, BACKLOGGD_URL + "/about/privacy/"),
+            new AboutLink(R.string.about_changelog, BACKLOGGD_URL + "/changelog/"),
+            new AboutLink(R.string.about_igdb, "https://igdb.com/"),
+    };
+
     private static final String LOG_GAME_JS =
             "(function(){var el=document.getElementById('add-a-game');if(el)el.click();})();";
 
@@ -92,6 +119,12 @@ public class MainActivity extends AppCompatActivity {
             "s.id='app-injected-style';" +
             "s.textContent='" +
             ".navbar{display:none!important;}" +
+            // The site's footer; its links live in the About dialog. Cookie notices stay visible.
+            "footer.footer{display:none!important;}" +
+            // No rubber-band scrolling fighting the native pull-to-refresh, and no web scrollbars.
+            "html,body{overscroll-behavior-y:none!important;}" +
+            "::-webkit-scrollbar{display:none!important;}" +
+            "*{scrollbar-width:none!important;}" +
             "body.app-show-search .navbar{display:flex!important;}" +
             "body.app-show-search .navbar-toggler{display:none!important;}" +
             "body.app-show-search #navbarSupportedContent{display:block!important;height:auto!important;flex-basis:100%!important;}" +
@@ -142,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
         long splashUntil = SystemClock.uptimeMillis() + SPLASH_MAX_MS;
         splashScreen.setKeepOnScreenCondition(
                 () -> !firstPageShown && SystemClock.uptimeMillis() < splashUntil);
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        SystemBars.blendIn(this);
         setContentView(R.layout.activity_main);
 
         myWeb = findViewById(R.id.myWeb);
@@ -171,6 +204,10 @@ public class MainActivity extends AppCompatActivity {
         myWeb.getSettings().setDomStorageEnabled(true);
         // The WebView is white until the first paint; match the site instead.
         myWeb.setBackgroundColor(ContextCompat.getColor(this, R.color.back_primary));
+        // Pull-to-refresh is the overscroll gesture here. The page's own scrollbars are hidden via
+        // CSS; the WebView's native one, which fades out after scrolling, stays.
+        myWeb.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        myWeb.setHorizontalScrollBarEnabled(false);
         myWeb.setDownloadListener(this::startDownload);
 
         retryButton.setOnClickListener(v -> {
@@ -204,6 +241,10 @@ public class MainActivity extends AppCompatActivity {
             public void onPageCommitVisible(WebView view, String url) {
                 super.onPageCommitVisible(view, url);
                 firstPageShown = true;
+                // Earlier than onPageFinished, so the hidden parts of the site do not flash up.
+                if (url != null && isBackloggdHost(Uri.parse(url))) {
+                    view.evaluateJavascript(INJECT_CSS_JS, null);
+                }
             }
 
             @Override
@@ -394,6 +435,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupBottomNav() {
         bottomNav.setOnItemSelectedListener(item -> {
+            bottomNav.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             int id = item.getItemId();
             if (id == R.id.nav_home) {
                 myWeb.loadUrl(BACKLOGGD_URL);
@@ -417,6 +459,7 @@ public class MainActivity extends AppCompatActivity {
         setupDrawerNav();
 
         bottomNav.setOnItemReselectedListener(item -> {
+            bottomNav.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             int id = item.getItemId();
             if (id == R.id.nav_home) {
                 myWeb.loadUrl(BACKLOGGD_URL);
@@ -464,6 +507,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupDrawerNav() {
         drawerNav.setNavigationItemSelectedListener(item -> {
+            drawerNav.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             drawerLayout.closeDrawer(GravityCompat.START);
             int id = item.getItemId();
             if (id == R.id.drawer_notifications) {
@@ -507,7 +551,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, R.string.feedback_no_email_app, Toast.LENGTH_SHORT).show();
                 }
             } else if (id == R.id.drawer_about) {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_REPO_URL)));
+                showAboutDialog();
             }
             return true;
         });
@@ -563,7 +607,7 @@ public class MainActivity extends AppCompatActivity {
             message.append("\n\n").append(release.notes);
         }
 
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.update_available_title)
                 .setMessage(message)
                 .setPositiveButton(R.string.update_download,
@@ -572,11 +616,34 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * The site's footer is hidden, so its links live here instead. Backloggd pages open in the
+     * app, everything else in the browser.
+     */
+    private void showAboutDialog() {
+        String[] labels = new String[ABOUT_LINKS.length];
+        for (int i = 0; i < ABOUT_LINKS.length; i++) {
+            labels[i] = getString(ABOUT_LINKS[i].label);
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.drawer_about)
+                .setItems(labels, (dialog, which) -> {
+                    Uri uri = Uri.parse(ABOUT_LINKS[which].url);
+                    if (isBackloggdHost(uri)) {
+                        myWeb.loadUrl(uri.toString());
+                    } else {
+                        openExternally(uri);
+                    }
+                })
+                .setNegativeButton(R.string.about_close, null)
+                .show();
+    }
+
     private void showWhatsNewDialog(@NonNull String version, @NonNull String notes) {
         if (isFinishing() || isDestroyed()) {
             return;
         }
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(getString(R.string.whats_new_title, version))
                 .setMessage(notes)
                 .setPositiveButton(R.string.whats_new_dismiss, null)

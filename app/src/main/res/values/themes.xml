@@ -1,18 +1,45 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.Backloggd" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">#16181C</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <!-- Secondary brand color. -->
+    <!--
+        Base application theme. Backloggd is dark-only, so the app is too: Material 3's dark
+        theme with its colour roles filled from the site's palette.
+    -->
+    <style name="Theme.Backloggd" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/back_pink</item>
+        <item name="colorOnPrimary">@color/back_primary</item>
+        <item name="colorPrimaryContainer">@color/back_pink_container</item>
+        <item name="colorOnPrimaryContainer">@color/back_pink</item>
+
+        <!-- The bottom nav's pill indicator and checked drawer items use these. -->
         <item name="colorSecondary">@color/back_text</item>
-        <item name="colorSecondaryVariant">@color/back_text_secondary</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimary</item>
-        <!-- Apply background to all windows -->
+        <item name="colorOnSecondary">@color/back_primary</item>
+        <item name="colorSecondaryContainer">@color/back_pink_container</item>
+        <item name="colorOnSecondaryContainer">@color/back_pink</item>
+
+        <item name="colorTertiary">@color/back_interact_secondary</item>
+        <item name="colorOnTertiary">@color/back_primary</item>
+
+        <item name="android:colorBackground">@color/back_primary</item>
+        <item name="colorOnBackground">@color/back_on_surface</item>
+        <item name="colorSurface">@color/back_primary</item>
+        <item name="colorOnSurface">@color/back_on_surface</item>
+        <item name="colorSurfaceVariant">@color/back_field</item>
+        <item name="colorOnSurfaceVariant">@color/back_text_secondary</item>
+        <item name="colorSurfaceContainerLowest">@color/back_primary</item>
+        <item name="colorSurfaceContainerLow">@color/back_primary</item>
+        <item name="colorSurfaceContainer">@color/back_primary</item>
+        <!-- Dialogs sit on this one, so they stand out from the page behind them. -->
+        <item name="colorSurfaceContainerHigh">@color/back_secondary</item>
+        <item name="colorSurfaceContainerHighest">@color/back_field</item>
+        <item name="colorOutline">@color/back_field_border_hover</item>
+        <item name="colorOutlineVariant">@color/back_field_border</item>
+        <item name="colorError">@color/back_type_abandoned</item>
+
+        <!-- The container colours above are final; no pink tint on raised surfaces. -->
+        <item name="elevationOverlayEnabled">false</item>
+
         <item name="android:windowBackground">@color/back_primary</item>
+        <!-- DrawerLayout paints the status bar area with this. -->
+        <item name="android:colorPrimaryDark">@color/back_primary</item>
 
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
     </style>
@@ -24,7 +51,7 @@
         <item name="postSplashScreenTheme">@style/Theme.Backloggd</item>
     </style>
 
-    <style name="Widget.App.Button" parent="Widget.MaterialComponents.Button">
+    <style name="Widget.App.Button" parent="Widget.Material3.Button">
         <item name="backgroundTint">@color/back_pink_dk</item>
         <item name="android:textColor">@color/white</item>
     </style>

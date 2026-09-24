@@ -36,6 +36,10 @@
     <color name="back_field_border_hover">#3F4B64</color>
     <color name="back_field_placeholder">#47C5D7E7</color> <!-- teil-transparent -->
 
+    <!-- Für die Material-3-Rollen abgeleitet -->
+    <color name="back_on_surface">#E8ECF0</color>
+    <color name="back_pink_container">#442735</color> <!-- back_pink zu 20 % über back_primary -->
+
     <!-- Aliase für referenzierte Farben -->
     <color name="back_field_selected">@color/back_pink_dk</color>
     <color name="back_type_played">@color/back_pink_dk</color>

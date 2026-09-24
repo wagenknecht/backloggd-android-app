@@ -1,18 +1,12 @@
 package de.wagenknecht.backloggd;
 
-import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
@@ -20,6 +14,9 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
+
+import com.google.android.material.timepicker.MaterialTimePicker;
+import com.google.android.material.timepicker.TimeFormat;
 
 import java.util.Locale;
 
@@ -29,15 +26,7 @@ import de.wagenknecht.backloggd.worker.WishlistCheckerWorker;
 
 public class SettingsFragment extends PreferenceFragmentCompat {
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        ViewCompat.setOnApplyWindowInsetsListener(getListView(), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-    }
+    private static final String TIME_PICKER_TAG = "reminder_time_picker";
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -47,19 +36,23 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         if (dailyNotificationTime != null) {
             updateDailyNotificationTimeSummary(dailyNotificationTime);
 
+            // A picker that survived a rotation lost its listener along with the old fragment.
+            Fragment openPicker = getChildFragmentManager().findFragmentByTag(TIME_PICKER_TAG);
+            if (openPicker instanceof MaterialTimePicker) {
+                listenForReminderTime((MaterialTimePicker) openPicker, dailyNotificationTime);
+            }
+
             dailyNotificationTime.setOnPreferenceClickListener(preference -> {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
-                int hour = prefs.getInt("daily_notification_hour", 9);
-                int minute = prefs.getInt("daily_notification_minute", 0);
-
-                new TimePickerDialog(getContext(), (timePickerView, hourOfDay, minuteOfHour) -> {
-                    prefs.edit()
-                            .putInt("daily_notification_hour", hourOfDay)
-                            .putInt("daily_notification_minute", minuteOfHour)
-                            .apply();
-                    updateDailyNotificationTimeSummary(preference);
-                    WishlistCheckerWorker.scheduleNextWorker(requireContext());
-                }, hour, minute, true).show();
+                MaterialTimePicker picker = new MaterialTimePicker.Builder()
+                        .setTimeFormat(TimeFormat.CLOCK_24H)
+                        .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
+                        .setHour(prefs.getInt("daily_notification_hour", 9))
+                        .setMinute(prefs.getInt("daily_notification_minute", 0))
+                        .setTitleText(preference.getTitle())
+                        .build();
+                listenForReminderTime(picker, preference);
+                picker.show(getChildFragmentManager(), TIME_PICKER_TAG);
                 return true;
             });
         }
@@ -116,6 +109,17 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 return true;
             });
         }
+    }
+
+    private void listenForReminderTime(MaterialTimePicker picker, Preference preference) {
+        picker.addOnPositiveButtonClickListener(v -> {
+            PreferenceManager.getDefaultSharedPreferences(requireContext()).edit()
+                    .putInt("daily_notification_hour", picker.getHour())
+                    .putInt("daily_notification_minute", picker.getMinute())
+                    .apply();
+            updateDailyNotificationTimeSummary(preference);
+            WishlistCheckerWorker.scheduleNextWorker(requireContext());
+        });
     }
 
     private void updateDailyNotificationTimeSummary(Preference preference) {

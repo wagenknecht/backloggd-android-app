@@ -30,6 +30,16 @@
     <string name="feedback_no_email_app">No email app installed.</string>
     <string name="no_app_for_link">No app found to open this link.</string>
     <string name="drawer_about">About</string>
+    <string name="about_close">Close</string>
+    <string name="about_this_app">About this app</string>
+    <string name="about_backloggd">About Backloggd</string>
+    <string name="about_contact">Contact</string>
+    <string name="about_backers">Backers</string>
+    <string name="about_roadmap">Roadmap</string>
+    <string name="about_terms">Terms of Service</string>
+    <string name="about_privacy">Privacy Policy</string>
+    <string name="about_changelog">Backloggd changelog</string>
+    <string name="about_igdb">Game data powered by IGDB</string>
     <string name="update_available_title">Update Available</string>
     <string name="update_available_message">A new version (%1$s) is available. Would you like to download it?</string>
     <string name="update_download">Download</string>

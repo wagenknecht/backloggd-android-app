@@ -1,8 +1,11 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory app:title="Backloggd Notifications">
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Backloggd Notifications">
 
         <ListPreference
+            app:iconSpaceReserved="false"
             app:key="notification_interval"
             app:title="Notification Interval"
             app:summary="How often to check for new notifications?"
@@ -12,18 +15,24 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="Wishlist Release Notification">
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Wishlist Release Notification">
 
         <Preference
+            app:iconSpaceReserved="false"
             app:key="daily_notification_time"
             app:title="Reminder Time"
             app:summary="Set the time for the daily reminder (default 9:00)"/>
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="About">
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="About">
 
         <Preference
+            app:iconSpaceReserved="false"
             app:key="developer_link"
             app:title="Developer"
             app:summary="Tysk" />
@@ -31,15 +40,18 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        app:iconSpaceReserved="false"
         app:key="debug_category"
         app:title="Debug">
 
         <Preference
+            app:iconSpaceReserved="false"
             app:key="debug_run_notification_worker"
             app:title="Run Notification Check Now"
             app:summary="Triggers NotificationCheckWorker as a one-time job" />
 
         <Preference
+            app:iconSpaceReserved="false"
             app:key="debug_run_wishlist_worker"
             app:title="Run Wishlist Check Now"
             app:summary="Triggers WishlistCheckerWorker as a one-time job" />

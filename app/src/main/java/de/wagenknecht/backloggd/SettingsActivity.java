@@ -2,21 +2,24 @@ package de.wagenknecht.backloggd;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.HapticFeedbackConstants;
+import android.view.Menu;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+
+import de.wagenknecht.backloggd.util.SystemBars;
 
 public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        SystemBars.blendIn(this);
         setContentView(R.layout.activity_settings);
 
         // On a recreation the fragment manager restores the fragment itself.
@@ -27,6 +30,9 @@ public class SettingsActivity extends AppCompatActivity {
                     .commit();
         }
 
+        // The theme has no action bar of its own; the toolbar takes its place and shows the
+        // activity label with a back arrow.
+        setSupportActionBar(findViewById(R.id.toolbar));
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
@@ -39,7 +45,18 @@ public class SettingsActivity extends AppCompatActivity {
             return insets;
         });
 
+        // The settings are none of the tabs. BottomNavigationView checks the first item by default,
+        // which marked Home as active and turned a tap on it into a reselect that did nothing.
+        Menu menu = bottomNav.getMenu();
+        int group = menu.getItem(0).getGroupId();
+        menu.setGroupCheckable(group, true, false);
+        for (int i = 0; i < menu.size(); i++) {
+            menu.getItem(i).setChecked(false);
+        }
+        menu.setGroupCheckable(group, true, true);
+
         bottomNav.setOnItemSelectedListener(item -> {
+            bottomNav.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             String action = null;
             int id = item.getItemId();
             if (id == R.id.nav_home) action = "home";
