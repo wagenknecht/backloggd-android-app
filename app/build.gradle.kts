@@ -53,8 +53,8 @@ android {
         minSdk = 24
         targetSdk = 36
         // Raise versionCode with every release and add changelogs/<versionCode>.txt under fastlane/.
-        versionCode = 3
-        versionName = "2.0.1"
+        versionCode = 4
+        versionName = "2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

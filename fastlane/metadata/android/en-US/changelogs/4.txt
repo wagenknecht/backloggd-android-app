@@ -1,0 +1,7 @@
+• All-new Material 3 look: navigation, menus, dialogs and settings
+• Feels more like a native app: smoother scrolling, haptic feedback and the predictive back gesture
+• Native splash screen instead of a white flash
+• Long-press the app icon for Log a game, Search and Profile
+• Upload avatars and screenshots, and download files
+• Wishlist reminders work again after Backloggd's site redesign
+• Follower and comment notifications get the right title
