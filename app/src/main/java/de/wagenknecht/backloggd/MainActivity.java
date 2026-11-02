@@ -61,6 +61,8 @@ import android.view.inputmethod.InputMethodManager;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import de.wagenknecht.backloggd.util.BackloggdUrls;
 import de.wagenknecht.backloggd.util.PageScripts;
@@ -93,6 +95,8 @@ public class MainActivity extends AppCompatActivity {
     /** The splash screen never waits longer than this for the first page. */
     private static final long SPLASH_MAX_MS = 2000;
     private static final String STATE_URL = "current_url";
+    /** One thread is enough: flushes are rare and must not overlap. */
+    private static final Executor COOKIE_WRITER = Executors.newSingleThreadExecutor();
 
     /** One entry of the About dialog. */
     private static final class AboutLink {
@@ -398,8 +402,8 @@ public class MainActivity extends AppCompatActivity {
         myWeb.onPause();
         // The WebView only writes cookies to disk now and then. Once in the background the app
         // can be killed at any moment, and a login that never reached the disk would be gone for
-        // the next start and for the workers.
-        CookieManager.getInstance().flush();
+        // the next start and for the workers. flush() waits for the disk, so not on this thread.
+        COOKIE_WRITER.execute(() -> CookieManager.getInstance().flush());
         super.onPause();
     }
 
