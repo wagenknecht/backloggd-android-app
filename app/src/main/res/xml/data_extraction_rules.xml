@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?><!--
    Backup rules for Android 12 and later; backup_rules.xml covers older versions.
-   The WebView keeps the Backloggd login in app_webview/. It stays out of the cloud backup, so the
-   session never lands on a server. A direct transfer to a new phone keeps it, so the user is still
-   logged in there.
+   Everything is backed up on purpose, including the Backloggd login in app_webview/: after
+   restoring a backup, the user is still logged in. Google encrypts cloud backups end to end with
+   the device's screen lock.
    See https://developer.android.com/about/versions/12/backup-restore#xml-changes
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="root" path="app_webview" />
     </cloud-backup>
 </data-extraction-rules>

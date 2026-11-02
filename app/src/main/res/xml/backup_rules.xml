@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?><!--
    Backup rules for Android 11 and older; data_extraction_rules.xml covers newer versions.
-   These versions cannot tell a cloud backup from a transfer to a new phone, so the WebView data
-   with the Backloggd login (app_webview/) stays out of both.
+   Everything is backed up on purpose, including the Backloggd login in app_webview/: after
+   restoring a backup, the user is still logged in.
    See https://developer.android.com/guide/topics/data/autobackup
 -->
 <full-backup-content>
-    <exclude domain="root" path="app_webview" />
 </full-backup-content>
