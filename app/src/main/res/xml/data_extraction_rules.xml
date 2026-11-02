@@ -1,19 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
+   Backup rules for Android 12 and later; backup_rules.xml covers older versions.
+   The WebView keeps the Backloggd login in app_webview/. It stays out of the cloud backup, so the
+   session never lands on a server. A direct transfer to a new phone keeps it, so the user is still
+   logged in there.
    See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="root" path="app_webview" />
     </cloud-backup>
-    <!--
-    <device-transfer>
-        <include .../>
-        <exclude .../>
-    </device-transfer>
-    -->
 </data-extraction-rules>

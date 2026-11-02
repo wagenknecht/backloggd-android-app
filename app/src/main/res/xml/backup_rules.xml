@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
+   Backup rules for Android 11 and older; data_extraction_rules.xml covers newer versions.
+   These versions cannot tell a cloud backup from a transfer to a new phone, so the WebView data
+   with the Backloggd login (app_webview/) stays out of both.
    See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older that API 31
-   See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="root" path="app_webview" />
 </full-backup-content>
