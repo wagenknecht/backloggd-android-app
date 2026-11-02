@@ -141,4 +141,21 @@ public class UpdateCheckerTest {
         assertFalse(UpdateChecker.isNewerVersion("garbage", "2.0"));
         assertFalse(UpdateChecker.isNewerVersion("2.0-beta", "2.0"));
     }
+
+    private static final long HOUR = 60 * 60 * 1000L;
+    private static final long NOW = 1_800_000_000_000L;
+
+    @Test
+    public void checksOnceADay() {
+        assertTrue("never checked", UpdateChecker.isCheckDue(0, NOW));
+        assertFalse(UpdateChecker.isCheckDue(NOW - HOUR, NOW));
+        assertFalse(UpdateChecker.isCheckDue(NOW - 23 * HOUR, NOW));
+        assertTrue(UpdateChecker.isCheckDue(NOW - 24 * HOUR, NOW));
+    }
+
+    @Test
+    public void checksAgainOnceTheClockWasSetBack() {
+        // Otherwise a last check in the future would block every check until that date.
+        assertTrue(UpdateChecker.isCheckDue(NOW + HOUR, NOW));
+    }
 }
