@@ -22,7 +22,8 @@ public final class PageScripts {
     public final String injectStyle;
     public final String search;
     public final String logGame;
-    public final String watchDialogs;
+    /** Reports open dialogs and Turbo page changes through the PageBridge. */
+    public final String watchPage;
     /** Evaluates to the saved username on the settings page, or null. */
     public final String readUsername;
 
@@ -37,7 +38,7 @@ public final class PageScripts {
                 + "})();";
         search = read(context, "web/search.js");
         logGame = read(context, "web/log-game.js");
-        watchDialogs = read(context, "web/watch-dialogs.js");
+        watchPage = read(context, "web/watch-page.js");
         readUsername = read(context, "web/read-username.js");
     }
 

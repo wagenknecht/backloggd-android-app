@@ -123,14 +123,33 @@ public class MainActivity extends AppCompatActivity {
     private PageScripts scripts;
 
     /**
-     * What the page may tell the app. Every frame sees it, ads included, so it must never do more
-     * than this harmless switch.
+     * What the page may tell the app. Every frame sees it, ads included, so it only ever takes
+     * harmless signals, never data the app would act on.
      */
     private final class PageBridge {
         @JavascriptInterface
         public void setDialogOpen(boolean open) {
             pageHasDialogOpen = open;
         }
+
+        /** A Turbo visit showed a new page; the app looks at it itself. */
+        @JavascriptInterface
+        public void pageShown() {
+            myWeb.post(MainActivity.this::onTurboPageShown);
+        }
+    }
+
+    /**
+     * Does for a page reached through Turbo what onPageFinished does for a loaded one, since the
+     * WebView reports no page load for it. Runs for whatever the main frame shows now.
+     */
+    private void onTurboPageShown() {
+        String url = myWeb.getUrl();
+        if (isDestroyed() || url == null || !BackloggdUrls.isBackloggdHost(Uri.parse(url))) {
+            return;
+        }
+        myWeb.evaluateJavascript(scripts.injectStyle, null);
+        keepUsernameInStep(myWeb, Uri.parse(url));
     }
 
     private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
@@ -259,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (url != null && BackloggdUrls.isBackloggdHost(Uri.parse(url))) {
                     view.evaluateJavascript(scripts.injectStyle, null);
-                    view.evaluateJavascript(scripts.watchDialogs, null);
+                    view.evaluateJavascript(scripts.watchPage, null);
                     if (!receivedError) {
                         keepUsernameInStep(view, Uri.parse(url));
                     }
