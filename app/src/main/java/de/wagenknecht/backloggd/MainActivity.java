@@ -25,6 +25,7 @@ import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -81,6 +82,8 @@ public class MainActivity extends AppCompatActivity {
     @Nullable
     private String pendingPostLaunchAction;
     private boolean firstPageShown = false;
+    /** Reported by the page through {@link PageBridge}, read by pull-to-refresh. */
+    private volatile boolean pageHasDialogOpen = false;
     private static final String TAG = "MainActivity";
     /** The splash screen never waits longer than this for the first page. */
     private static final long SPLASH_MAX_MS = 2000;
@@ -135,6 +138,30 @@ public class MainActivity extends AppCompatActivity {
             "body.app-show-search .navbar-brand{display:none!important;}" +
             "';(document.head||document.documentElement).appendChild(s);" +
             "})();";
+
+    /**
+     * Tells the app whenever one of the site's dialogs opens or closes. Bootstrap marks an open
+     * one with the modal-open class on the body.
+     */
+    private static final String WATCH_DIALOGS_JS =
+            "(function(){" +
+            "if(window.__appWatchesDialogs||!window.BackloggdApp||!document.body)return;" +
+            "window.__appWatchesDialogs=true;" +
+            "var report=function(){BackloggdApp.setDialogOpen(document.body.classList.contains('modal-open'));};" +
+            "new MutationObserver(report).observe(document.body,{attributes:true,attributeFilter:['class']});" +
+            "report();" +
+            "})();";
+
+    /**
+     * What the page may tell the app. Every frame sees it, ads included, so it must never do more
+     * than this harmless switch.
+     */
+    private final class PageBridge {
+        @JavascriptInterface
+        public void setDialogOpen(boolean open) {
+            pageHasDialogOpen = open;
+        }
+    }
 
     /** The saved name: the value attribute, not what may have been typed into the field since. */
     private static final String READ_USERNAME_JS =
@@ -197,6 +224,11 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh.setColorSchemeResources(R.color.back_pink);
         swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.back_secondary);
         swipeRefresh.setOnRefreshListener(() -> myWeb.reload());
+        // A pull inside an open dialog that is already at its top would reload the page and throw
+        // away whatever was typed into it. Pulls that scroll the dialog never reach this far, the
+        // WebView keeps them for itself.
+        swipeRefresh.setOnChildScrollUpCallback(
+                (parent, child) -> pageHasDialogOpen || myWeb.canScrollVertically(-1));
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -219,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
         myWeb.setOverScrollMode(View.OVER_SCROLL_NEVER);
         myWeb.setHorizontalScrollBarEnabled(false);
         myWeb.setDownloadListener(this::startDownload);
+        myWeb.addJavascriptInterface(new PageBridge(), "BackloggdApp");
 
         retryButton.setOnClickListener(v -> {
             myWeb.setVisibility(View.VISIBLE);
@@ -243,6 +276,8 @@ public class MainActivity extends AppCompatActivity {
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
                 receivedError = false;
+                // A dialog of the previous page is gone; the new page reports its own.
+                pageHasDialogOpen = false;
                 errorLayout.setVisibility(View.GONE);
                 myWeb.setVisibility(View.VISIBLE);
             }
@@ -278,6 +313,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (url != null && isBackloggdHost(Uri.parse(url))) {
                     view.evaluateJavascript(INJECT_CSS_JS, null);
+                    view.evaluateJavascript(WATCH_DIALOGS_JS, null);
                     if (!receivedError) {
                         keepUsernameInStep(view, Uri.parse(url));
                     }
