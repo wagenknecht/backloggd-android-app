@@ -1,0 +1,22 @@
+/* Injected into every Backloggd page. The app's bottom bar and drawer replace the site's navbar. */
+.navbar { display: none !important; }
+
+/* The site's footer; its links live in the About dialog. Cookie notices stay visible. */
+footer.footer { display: none !important; }
+
+/* No rubber-band scrolling fighting the native pull-to-refresh, and no web scrollbars. */
+html, body { overscroll-behavior-y: none !important; }
+::-webkit-scrollbar { display: none !important; }
+* { scrollbar-width: none !important; }
+
+/* While searching (search.js), only the navbar's search field shows. */
+body.app-show-search .navbar { display: flex !important; }
+body.app-show-search .navbar-toggler { display: none !important; }
+body.app-show-search #navbarSupportedContent {
+    display: block !important;
+    height: auto !important;
+    flex-basis: 100% !important;
+}
+body.app-show-search .navbar-nav { display: none !important; }
+body.app-show-search #add-a-game { display: none !important; }
+body.app-show-search .navbar-brand { display: none !important; }

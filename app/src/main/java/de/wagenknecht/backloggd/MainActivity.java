@@ -59,6 +59,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import android.view.inputmethod.InputMethodManager;
 
+import de.wagenknecht.backloggd.util.PageScripts;
 import de.wagenknecht.backloggd.util.SystemBars;
 import de.wagenknecht.backloggd.util.UpdateChecker;
 import de.wagenknecht.backloggd.util.UsernameHelper;
@@ -114,43 +115,8 @@ public class MainActivity extends AppCompatActivity {
             new AboutLink(R.string.about_igdb, "https://igdb.com/"),
     };
 
-    private static final String LOG_GAME_JS =
-            "(function(){var el=document.getElementById('add-a-game');if(el)el.click();})();";
-
-    private static final String INJECT_CSS_JS =
-            "(function(){" +
-            "if(document.getElementById('app-injected-style'))return;" +
-            "var s=document.createElement('style');" +
-            "s.id='app-injected-style';" +
-            "s.textContent='" +
-            ".navbar{display:none!important;}" +
-            // The site's footer; its links live in the About dialog. Cookie notices stay visible.
-            "footer.footer{display:none!important;}" +
-            // No rubber-band scrolling fighting the native pull-to-refresh, and no web scrollbars.
-            "html,body{overscroll-behavior-y:none!important;}" +
-            "::-webkit-scrollbar{display:none!important;}" +
-            "*{scrollbar-width:none!important;}" +
-            "body.app-show-search .navbar{display:flex!important;}" +
-            "body.app-show-search .navbar-toggler{display:none!important;}" +
-            "body.app-show-search #navbarSupportedContent{display:block!important;height:auto!important;flex-basis:100%!important;}" +
-            "body.app-show-search .navbar-nav{display:none!important;}" +
-            "body.app-show-search #add-a-game{display:none!important;}" +
-            "body.app-show-search .navbar-brand{display:none!important;}" +
-            "';(document.head||document.documentElement).appendChild(s);" +
-            "})();";
-
-    /**
-     * Tells the app whenever one of the site's dialogs opens or closes. Bootstrap marks an open
-     * one with the modal-open class on the body.
-     */
-    private static final String WATCH_DIALOGS_JS =
-            "(function(){" +
-            "if(window.__appWatchesDialogs||!window.BackloggdApp||!document.body)return;" +
-            "window.__appWatchesDialogs=true;" +
-            "var report=function(){BackloggdApp.setDialogOpen(document.body.classList.contains('modal-open'));};" +
-            "new MutationObserver(report).observe(document.body,{attributes:true,attributeFilter:['class']});" +
-            "report();" +
-            "})();";
+    /** What the app runs on Backloggd pages, from assets/web/. */
+    private PageScripts scripts;
 
     /**
      * What the page may tell the app. Every frame sees it, ads included, so it must never do more
@@ -162,31 +128,6 @@ public class MainActivity extends AppCompatActivity {
             pageHasDialogOpen = open;
         }
     }
-
-    /** The saved name: the value attribute, not what may have been typed into the field since. */
-    private static final String READ_USERNAME_JS =
-            "(function(){var e=document.querySelector('input#user_username');" +
-            "return e?e.getAttribute('value'):null;})();";
-
-    private static final String SEARCH_JS =
-            "(function(){" +
-            "document.body.classList.add('app-show-search');" +
-            "var c=document.getElementById('navbarSupportedContent');" +
-            "if(c){c.classList.add('show');c.classList.remove('collapse');}" +
-            "setTimeout(function(){" +
-            "var sels=['#nav-bar-search','input.search-bar','input[name=\"query\"]','input[type=\"search\"]'];" +
-            "for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);" +
-            "if(el){" +
-            "el.scrollIntoView({block:'center'});" +
-            "el.focus();" +
-            "el.click();" +
-            "el.addEventListener('blur',function(){" +
-            "setTimeout(function(){document.body.classList.remove('app-show-search');},200);" +
-            "},{once:true});" +
-            "return;}}" +
-            "},50);" +
-            "})();";
-
 
     private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -211,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
                 () -> !firstPageShown && SystemClock.uptimeMillis() < splashUntil);
         SystemBars.blendIn(this);
         setContentView(R.layout.activity_main);
+        scripts = PageScripts.load(this);
 
         myWeb = findViewById(R.id.myWeb);
         errorLayout = findViewById(R.id.errorLayout);
@@ -288,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
                 firstPageShown = true;
                 // Earlier than onPageFinished, so the hidden parts of the site do not flash up.
                 if (url != null && isBackloggdHost(Uri.parse(url))) {
-                    view.evaluateJavascript(INJECT_CSS_JS, null);
+                    view.evaluateJavascript(scripts.injectStyle, null);
                 }
             }
 
@@ -312,8 +254,8 @@ public class MainActivity extends AppCompatActivity {
                     errorLayout.setVisibility(View.GONE);
                 }
                 if (url != null && isBackloggdHost(Uri.parse(url))) {
-                    view.evaluateJavascript(INJECT_CSS_JS, null);
-                    view.evaluateJavascript(WATCH_DIALOGS_JS, null);
+                    view.evaluateJavascript(scripts.injectStyle, null);
+                    view.evaluateJavascript(scripts.watchDialogs, null);
                     if (!receivedError) {
                         keepUsernameInStep(view, Uri.parse(url));
                     }
@@ -501,7 +443,7 @@ public class MainActivity extends AppCompatActivity {
                 myWeb.loadUrl(BACKLOGGD_URL);
                 break;
             case "log_game":
-                myWeb.evaluateJavascript(LOG_GAME_JS, null);
+                myWeb.evaluateJavascript(scripts.logGame, null);
                 break;
             case "search":
                 triggerSearch();
@@ -556,7 +498,7 @@ public class MainActivity extends AppCompatActivity {
         if (path.equals("/login") || path.startsWith("/login/")) {
             UsernameHelper.clearCached(this);
         } else if (path.equals("/settings") || path.startsWith("/settings/")) {
-            view.evaluateJavascript(READ_USERNAME_JS, result -> {
+            view.evaluateJavascript(scripts.readUsername, result -> {
                 String username = UsernameHelper.fromJsResult(result);
                 if (username != null) {
                     UsernameHelper.setCached(this, username);
@@ -578,7 +520,7 @@ public class MainActivity extends AppCompatActivity {
                 myWeb.loadUrl(BACKLOGGD_URL);
                 return true;
             } else if (id == R.id.nav_log_game) {
-                myWeb.evaluateJavascript(LOG_GAME_JS, null);
+                myWeb.evaluateJavascript(scripts.logGame, null);
                 return false;
             } else if (id == R.id.nav_search) {
                 triggerSearch();
@@ -601,7 +543,7 @@ public class MainActivity extends AppCompatActivity {
             if (id == R.id.nav_home) {
                 myWeb.loadUrl(BACKLOGGD_URL);
             } else if (id == R.id.nav_log_game) {
-                myWeb.evaluateJavascript(LOG_GAME_JS, null);
+                myWeb.evaluateJavascript(scripts.logGame, null);
             } else if (id == R.id.nav_search) {
                 triggerSearch();
             } else if (id == R.id.nav_profile) {
@@ -633,7 +575,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void triggerSearch() {
         myWeb.requestFocus();
-        myWeb.evaluateJavascript(SEARCH_JS, null);
+        myWeb.evaluateJavascript(scripts.search, null);
         myWeb.postDelayed(() -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
