@@ -7,10 +7,7 @@
     <string name="nav_search">Search</string>
     <string name="nav_profile">My profile</string>
     <string name="nav_more">More</string>
-    <string name="login_required">Please log in to view your profile.</string>
     <string name="fetching_username">Loading your profile…</string>
-    <string name="drawer_open">Open menu</string>
-    <string name="drawer_close">Close menu</string>
     <string name="drawer_notifications">Notifications</string>
     <string name="drawer_played">Played</string>
     <string name="drawer_playing">Playing</string>
