@@ -71,8 +71,9 @@ public final class UpdateChecker {
     }
 
     public interface Callback {
+        /** @return whether the user got to see it; if not, the next start offers it again */
         @MainThread
-        void onUpdateAvailable(@NonNull Release release);
+        boolean onUpdateAvailable(@NonNull Release release);
     }
 
     public interface NotesCallback {
@@ -170,15 +171,17 @@ public final class UpdateChecker {
         Handler mainHandler = new Handler(Looper.getMainLooper());
         new Thread(() -> {
             JSONObject releaseJson = fetchLatestRelease();
+            // Failed checks do not count; the next start tries again. So does an update the user
+            // never got to see, e.g. because they left the app before the dialog came up.
             if (releaseJson == null) {
-                // Failed checks do not count; the next start tries again.
                 return;
             }
-            prefs.edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply();
+            Runnable rememberCheck = () -> prefs.edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply();
 
             String latestVersion = releaseJson.optString("tag_name", "");
             if (latestVersion.isEmpty()) {
                 Log.w(TAG, "Latest release has no tag_name, skipping update check.");
+                rememberCheck.run();
                 return;
             }
 
@@ -186,6 +189,7 @@ public final class UpdateChecker {
             Log.d(TAG, "Installed app version: " + installedVersion);
 
             if (!isNewerVersion(latestVersion, installedVersion)) {
+                rememberCheck.run();
                 return;
             }
 
@@ -196,7 +200,11 @@ public final class UpdateChecker {
                     : toPlainText(releaseJson.optString("body", ""));
 
             Release release = new Release(latestVersion, findApkAssetUrl(releaseJson), notes);
-            mainHandler.post(() -> callback.onUpdateAvailable(release));
+            mainHandler.post(() -> {
+                if (callback.onUpdateAvailable(release)) {
+                    rememberCheck.run();
+                }
+            });
         }).start();
     }
 
