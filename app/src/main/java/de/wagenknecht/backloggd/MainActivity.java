@@ -136,6 +136,11 @@ public class MainActivity extends AppCompatActivity {
             "';(document.head||document.documentElement).appendChild(s);" +
             "})();";
 
+    /** The saved name: the value attribute, not what may have been typed into the field since. */
+    private static final String READ_USERNAME_JS =
+            "(function(){var e=document.querySelector('input#user_username');" +
+            "return e?e.getAttribute('value'):null;})();";
+
     private static final String SEARCH_JS =
             "(function(){" +
             "document.body.classList.add('app-show-search');" +
@@ -270,6 +275,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (url != null && isBackloggdHost(Uri.parse(url))) {
                     view.evaluateJavascript(INJECT_CSS_JS, null);
+                    if (!receivedError) {
+                        keepUsernameInStep(view, Uri.parse(url));
+                    }
                     if (pendingPostLaunchAction != null && !receivedError) {
                         runPendingPostLaunchActionWhenReady(view);
                     }
@@ -497,6 +505,25 @@ public class MainActivity extends AppCompatActivity {
     private static boolean isBackloggdHost(Uri uri) {
         String host = uri.getHost();
         return "backloggd.com".equalsIgnoreCase(host) || "www.backloggd.com".equalsIgnoreCase(host);
+    }
+
+    /**
+     * The cached username builds the profile and library links, so it has to follow the account.
+     * On the login page whoever signs in next may be someone else. The settings page shows the
+     * current name, also right after the user renamed themselves there.
+     */
+    private void keepUsernameInStep(WebView view, Uri uri) {
+        String path = uri.getPath() != null ? uri.getPath() : "";
+        if (path.equals("/login") || path.startsWith("/login/")) {
+            UsernameHelper.clearCached(this);
+        } else if (path.equals("/settings") || path.startsWith("/settings/")) {
+            view.evaluateJavascript(READ_USERNAME_JS, result -> {
+                String username = UsernameHelper.fromJsResult(result);
+                if (username != null) {
+                    UsernameHelper.setCached(this, username);
+                }
+            });
+        }
     }
 
     private void updateUiForUrl(String url) {

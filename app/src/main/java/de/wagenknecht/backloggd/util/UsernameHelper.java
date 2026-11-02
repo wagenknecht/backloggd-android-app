@@ -43,6 +43,26 @@ public final class UsernameHelper {
         PreferenceManager.getDefaultSharedPreferences(context).edit().remove(PREF_KEY).apply();
     }
 
+    public static void setCached(@NonNull Context context, @NonNull String username) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit().putString(PREF_KEY, username).apply();
+    }
+
+    /**
+     * The username from a WebView evaluateJavascript result, which is a JSON string such as
+     * "\"Tysk\"", or "null" when the page has none. Usernames never need escaping, so anything
+     * that does is not one.
+     */
+    @Nullable
+    public static String fromJsResult(@Nullable String result) {
+        if (result == null || result.length() < 3
+                || result.charAt(0) != '"' || result.charAt(result.length() - 1) != '"') {
+            return null;
+        }
+        String username = result.substring(1, result.length() - 1);
+        return username.indexOf('\\') >= 0 ? null : username;
+    }
+
     @WorkerThread
     @Nullable
     public static String fetchSync(@NonNull Context context) {
@@ -68,8 +88,7 @@ public final class UsernameHelper {
             String username = usernameInput.val();
             if (username == null || username.isEmpty()) return null;
 
-            PreferenceManager.getDefaultSharedPreferences(context)
-                    .edit().putString(PREF_KEY, username).apply();
+            setCached(context, username);
             Log.d(TAG, "Fetched and saved username: " + username);
             return username;
         } catch (IOException e) {
