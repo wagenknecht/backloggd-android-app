@@ -98,6 +98,13 @@ public class NotificationCheckWorker extends Worker {
     public Result doWork() {
         Log.d(TAG, "Worker started. Checking for notifications.");
 
+        // Fetching the page marks every notification as read on Backloggd. Without a way to show
+        // them, a check would only make them disappear unseen.
+        if (!canNotify(getApplicationContext())) {
+            Log.d(TAG, "Notifications are switched off. Skipping the check.");
+            return Result.success();
+        }
+
         String cookies = CookieManager.getInstance().getCookie(NOTIFICATION_URL);
         if (cookies == null || cookies.isEmpty()) {
             Log.w(TAG, "Could not get cookies. User is probably not logged in. Aborting.");
@@ -126,14 +133,19 @@ public class NotificationCheckWorker extends Worker {
             if (!unreadNotifications.isEmpty()) {
                 Log.i(TAG, unreadNotifications.size() + " unread notifications found!");
                 for (UnreadNotification notification : unreadNotifications) {
-                    String title = getApplicationContext().getString(notification.titleRes);
+                    // They are already marked as read on the site; one failing must not cost the rest.
+                    try {
+                        String title = getApplicationContext().getString(notification.titleRes);
 
-                    Bitmap image = null;
-                    if (!notification.imageUrl.isEmpty()) {
-                        image = ImageDownloader.downloadDownsampled(notification.imageUrl);
+                        Bitmap image = null;
+                        if (!notification.imageUrl.isEmpty()) {
+                            image = ImageDownloader.downloadDownsampled(notification.imageUrl);
+                        }
+
+                        showPushNotification(title, notification.text, notification.text.hashCode(), image);
+                    } catch (RuntimeException e) {
+                        Log.e(TAG, "Could not show a notification.", e);
                     }
-
-                    showPushNotification(title, notification.text, notification.text.hashCode(), image);
                 }
             } else {
                 Log.d(TAG, "No unread notifications.");
@@ -238,7 +250,23 @@ public class NotificationCheckWorker extends Worker {
         notificationManager.notify(notificationId, builder.build());
     }
 
-    private void createNotificationChannel(Context context) {
+    /** False when the permission is missing, or the app or this channel is switched off. */
+    private static boolean canNotify(Context context) {
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                || !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // The channel only exists once created, and a new one is never switched off.
+            createNotificationChannel(context);
+            NotificationChannel channel = context.getSystemService(NotificationManager.class)
+                    .getNotificationChannel(CHANNEL_ID);
+            return channel != null && channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        }
+        return true;
+    }
+
+    private static void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = context.getString(R.string.notification_channel_name);
             String description = context.getString(R.string.notification_channel_description);

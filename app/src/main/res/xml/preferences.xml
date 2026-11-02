@@ -8,7 +8,7 @@
             app:iconSpaceReserved="false"
             app:key="notification_interval"
             app:title="Notification Interval"
-            app:summary="How often to check for new notifications?"
+            app:summary="How often to check for new notifications? Each check marks them as read on Backloggd."
             app:entries="@array/notification_interval_entries"
             app:entryValues="@array/notification_interval_values"
             app:defaultValue="15" />
