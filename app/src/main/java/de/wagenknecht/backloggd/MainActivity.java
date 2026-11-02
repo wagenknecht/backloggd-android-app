@@ -59,6 +59,10 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import android.view.inputmethod.InputMethodManager;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import de.wagenknecht.backloggd.util.BackloggdUrls;
 import de.wagenknecht.backloggd.util.PageScripts;
 import de.wagenknecht.backloggd.util.SystemBars;
 import de.wagenknecht.backloggd.util.UpdateChecker;
@@ -206,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                if (isBackloggdHost(uri)) {
+                if (BackloggdUrls.isBackloggdHost(uri)) {
                     return false;
                 }
 
@@ -229,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
                 super.onPageCommitVisible(view, url);
                 firstPageShown = true;
                 // Earlier than onPageFinished, so the hidden parts of the site do not flash up.
-                if (url != null && isBackloggdHost(Uri.parse(url))) {
+                if (url != null && BackloggdUrls.isBackloggdHost(Uri.parse(url))) {
                     view.evaluateJavascript(scripts.injectStyle, null);
                 }
             }
@@ -253,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
                     myWeb.setVisibility(View.VISIBLE);
                     errorLayout.setVisibility(View.GONE);
                 }
-                if (url != null && isBackloggdHost(Uri.parse(url))) {
+                if (url != null && BackloggdUrls.isBackloggdHost(Uri.parse(url))) {
                     view.evaluateJavascript(scripts.injectStyle, null);
                     view.evaluateJavascript(scripts.watchDialogs, null);
                     if (!receivedError) {
@@ -361,7 +365,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void restorePage(@NonNull Bundle savedInstanceState) {
         String url = savedInstanceState.getString(STATE_URL);
-        myWeb.loadUrl(isSafeToLoad(url) ? url : BACKLOGGD_URL);
+        myWeb.loadUrl(BackloggdUrls.isSafeToLoad(url) ? url : BACKLOGGD_URL);
     }
 
     @Override
@@ -400,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
         Uri data = intent.getData();
 
         if (Intent.ACTION_VIEW.equals(action) && data != null) {
-            if (isSafeToLoad(data.toString())) {
+            if (BackloggdUrls.isSafeToLoad(data.toString())) {
                 myWeb.loadUrl(data.toString());
                 return;
             }
@@ -409,7 +413,7 @@ public class MainActivity extends AppCompatActivity {
         if (intent.hasExtra("urlToLoad")) {
             String urlToLoad = intent.getStringExtra("urlToLoad");
             intent.removeExtra("urlToLoad");
-            if (isSafeToLoad(urlToLoad)) {
+            if (BackloggdUrls.isSafeToLoad(urlToLoad)) {
                 myWeb.loadUrl(urlToLoad);
                 return;
             }
@@ -449,7 +453,7 @@ public class MainActivity extends AppCompatActivity {
                 triggerSearch();
                 break;
             case "profile":
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u));
+                withUsername(u -> myWeb.loadUrl(BackloggdUrls.profile(u)));
                 break;
             case "more":
                 drawerLayout.openDrawer(GravityCompat.START);
@@ -464,28 +468,6 @@ public class MainActivity extends AppCompatActivity {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
             }
         }
-    }
-
-    /**
-     * MainActivity is exported, so any app on the device can hand it a URL, either as a VIEW
-     * intent aimed at it directly (which skips the intent filter) or as the urlToLoad extra. Only
-     * Backloggd pages over https may load into the WebView that holds the login; another site or a
-     * javascript: URL would run with the user's session. Backslashes and user info are refused
-     * because Android and Chromium parse them differently, e.g. https://evil.com\@backloggd.com.
-     */
-    private static boolean isSafeToLoad(@Nullable String url) {
-        if (url == null || url.indexOf('\\') >= 0) {
-            return false;
-        }
-        Uri uri = Uri.parse(url);
-        return "https".equalsIgnoreCase(uri.getScheme())
-                && uri.getUserInfo() == null
-                && isBackloggdHost(uri);
-    }
-
-    private static boolean isBackloggdHost(Uri uri) {
-        String host = uri.getHost();
-        return "backloggd.com".equalsIgnoreCase(host) || "www.backloggd.com".equalsIgnoreCase(host);
     }
 
     /**
@@ -516,40 +498,32 @@ public class MainActivity extends AppCompatActivity {
         bottomNav.setOnItemSelectedListener(item -> {
             bottomNav.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                myWeb.loadUrl(BACKLOGGD_URL);
-                return true;
-            } else if (id == R.id.nav_log_game) {
-                myWeb.evaluateJavascript(scripts.logGame, null);
-                return false;
-            } else if (id == R.id.nav_search) {
-                triggerSearch();
-                return false;
-            } else if (id == R.id.nav_profile) {
-                withUsername(username -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + username));
-                return true;
-            } else if (id == R.id.nav_more) {
-                drawerLayout.openDrawer(GravityCompat.START);
-                return false;
-            }
-            return false;
+            openBottomNavItem(id);
+            // Only the two tabs that are places stay highlighted; the others are actions.
+            return id == R.id.nav_home || id == R.id.nav_profile;
         });
 
         setupDrawerNav();
 
+        // Tapping the current tab again starts it over, e.g. reloads the home page.
         bottomNav.setOnItemReselectedListener(item -> {
             bottomNav.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                myWeb.loadUrl(BACKLOGGD_URL);
-            } else if (id == R.id.nav_log_game) {
-                myWeb.evaluateJavascript(scripts.logGame, null);
-            } else if (id == R.id.nav_search) {
-                triggerSearch();
-            } else if (id == R.id.nav_profile) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u));
-            }
+            openBottomNavItem(item.getItemId());
         });
+    }
+
+    private void openBottomNavItem(int id) {
+        if (id == R.id.nav_home) {
+            myWeb.loadUrl(BACKLOGGD_URL);
+        } else if (id == R.id.nav_log_game) {
+            myWeb.evaluateJavascript(scripts.logGame, null);
+        } else if (id == R.id.nav_search) {
+            triggerSearch();
+        } else if (id == R.id.nav_profile) {
+            withUsername(u -> myWeb.loadUrl(BackloggdUrls.profile(u)));
+        } else if (id == R.id.nav_more) {
+            drawerLayout.openDrawer(GravityCompat.START);
+        }
     }
 
     private interface UsernameAction {
@@ -585,34 +559,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupDrawerNav() {
+        // Drawer entries that open a part of the user's own profile, with that part's path.
+        Map<Integer, String> profileSections = new HashMap<>();
+        profileSections.put(R.id.drawer_played, "games");
+        profileSections.put(R.id.drawer_playing, "playing");
+        profileSections.put(R.id.drawer_backlog, "backlog");
+        profileSections.put(R.id.drawer_wishlist, "wishlist");
+        profileSections.put(R.id.drawer_journal, "journal");
+        profileSections.put(R.id.drawer_activity, "activity");
+        profileSections.put(R.id.drawer_reviews, "reviews");
+        profileSections.put(R.id.drawer_lists, "lists");
+        profileSections.put(R.id.drawer_friends, "following");
+        profileSections.put(R.id.drawer_likes, "likes");
+        profileSections.put(R.id.drawer_stats, "stats");
+
         drawerNav.setNavigationItemSelectedListener(item -> {
             drawerNav.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             drawerLayout.closeDrawer(GravityCompat.START);
             int id = item.getItemId();
-            if (id == R.id.drawer_notifications) {
+            String section = profileSections.get(id);
+            if (section != null) {
+                withUsername(u -> myWeb.loadUrl(BackloggdUrls.profileSection(u, section)));
+            } else if (id == R.id.drawer_notifications) {
                 myWeb.loadUrl(NOTIFICATION_URL);
-            } else if (id == R.id.drawer_played) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/games/"));
-            } else if (id == R.id.drawer_playing) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/playing/"));
-            } else if (id == R.id.drawer_backlog) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/backlog/"));
-            } else if (id == R.id.drawer_wishlist) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/wishlist/"));
-            } else if (id == R.id.drawer_journal) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/journal/"));
-            } else if (id == R.id.drawer_activity) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/activity/"));
-            } else if (id == R.id.drawer_reviews) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/reviews/"));
-            } else if (id == R.id.drawer_lists) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/lists/"));
-            } else if (id == R.id.drawer_friends) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/following/"));
-            } else if (id == R.id.drawer_likes) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/likes/"));
-            } else if (id == R.id.drawer_stats) {
-                withUsername(u -> myWeb.loadUrl(BACKLOGGD_URL + "/u/" + u + "/stats/"));
             } else if (id == R.id.drawer_backloggd_settings) {
                 myWeb.loadUrl(BACKLOGGD_URL + "/settings/");
             } else if (id == R.id.drawer_app_settings) {
@@ -639,7 +608,7 @@ public class MainActivity extends AppCompatActivity {
     private void updateBottomNavSelection(String url) {
         if (url == null || bottomNav == null) return;
         Uri uri = Uri.parse(url);
-        if (!isBackloggdHost(uri)) return;
+        if (!BackloggdUrls.isBackloggdHost(uri)) return;
 
         String path = uri.getPath();
         if (path == null) path = "/";
@@ -649,12 +618,8 @@ public class MainActivity extends AppCompatActivity {
             itemId = R.id.nav_home;
         } else if (path.startsWith("/search")) {
             itemId = R.id.nav_search;
-        } else if (path.startsWith("/u/")) {
-            String username = UsernameHelper.getCached(this);
-            if (username != null
-                    && (path.equals("/u/" + username) || path.startsWith("/u/" + username + "/"))) {
-                itemId = R.id.nav_profile;
-            }
+        } else if (BackloggdUrls.isOnProfileOf(path, UsernameHelper.getCached(this))) {
+            itemId = R.id.nav_profile;
         }
 
         android.view.Menu menu = bottomNav.getMenu();
@@ -708,7 +673,7 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle(R.string.drawer_about)
                 .setItems(labels, (dialog, which) -> {
                     Uri uri = Uri.parse(ABOUT_LINKS[which].url);
-                    if (isBackloggdHost(uri)) {
+                    if (BackloggdUrls.isBackloggdHost(uri)) {
                         myWeb.loadUrl(uri.toString());
                     } else {
                         openExternally(uri);
@@ -820,7 +785,7 @@ public class MainActivity extends AppCompatActivity {
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
                 .addRequestHeader("User-Agent", userAgent);
         // The login cookie only ever goes to Backloggd itself.
-        String cookies = isBackloggdHost(uri) ? CookieManager.getInstance().getCookie(url) : null;
+        String cookies = BackloggdUrls.isBackloggdHost(uri) ? CookieManager.getInstance().getCookie(url) : null;
         if (cookies != null && !cookies.isEmpty()) {
             request.addRequestHeader("Cookie", cookies);
         }
