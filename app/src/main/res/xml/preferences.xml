@@ -2,13 +2,13 @@
 
     <PreferenceCategory
         app:iconSpaceReserved="false"
-        app:title="Backloggd Notifications">
+        app:title="@string/pref_category_notifications">
 
         <ListPreference
             app:iconSpaceReserved="false"
             app:key="notification_interval"
-            app:title="Notification Interval"
-            app:summary="How often to check for new notifications? Each check marks them as read on Backloggd."
+            app:title="@string/pref_notification_interval_title"
+            app:summary="@string/pref_notification_interval_summary"
             app:entries="@array/notification_interval_entries"
             app:entryValues="@array/notification_interval_values"
             app:defaultValue="15" />
@@ -17,44 +17,44 @@
 
     <PreferenceCategory
         app:iconSpaceReserved="false"
-        app:title="Wishlist Release Notification">
+        app:title="@string/pref_category_wishlist">
 
         <Preference
             app:iconSpaceReserved="false"
             app:key="daily_notification_time"
-            app:title="Reminder Time"
-            app:summary="Set the time for the daily reminder (default 9:00)"/>
+            app:title="@string/pref_reminder_time_title"
+            app:summary="@string/pref_reminder_time_summary"/>
 
     </PreferenceCategory>
 
     <PreferenceCategory
         app:iconSpaceReserved="false"
-        app:title="About">
+        app:title="@string/pref_category_about">
 
         <Preference
             app:iconSpaceReserved="false"
             app:key="developer_link"
-            app:title="Developer"
-            app:summary="Tysk" />
+            app:title="@string/pref_developer_title"
+            app:summary="@string/pref_developer_summary" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
         app:iconSpaceReserved="false"
         app:key="debug_category"
-        app:title="Debug">
+        app:title="@string/pref_category_debug">
 
         <Preference
             app:iconSpaceReserved="false"
             app:key="debug_run_notification_worker"
-            app:title="Run Notification Check Now"
-            app:summary="Triggers NotificationCheckWorker as a one-time job" />
+            app:title="@string/pref_debug_run_notification_title"
+            app:summary="@string/pref_debug_run_notification_summary" />
 
         <Preference
             app:iconSpaceReserved="false"
             app:key="debug_run_wishlist_worker"
-            app:title="Run Wishlist Check Now"
-            app:summary="Triggers WishlistCheckerWorker as a one-time job" />
+            app:title="@string/pref_debug_run_wishlist_title"
+            app:summary="@string/pref_debug_run_wishlist_summary" />
 
     </PreferenceCategory>
 

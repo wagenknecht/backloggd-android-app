@@ -64,4 +64,23 @@
     <string name="wishlist_channel_description">Notifies you on the day a game on your wishlist releases.</string>
     <string name="wishlist_notification_title">Releasing Today!</string>
     <string name="wishlist_notification_message">%1$s releases today.</string>
+    <string name="pref_category_notifications">Backloggd Notifications</string>
+    <string name="pref_notification_interval_title">Notification Interval</string>
+    <string name="pref_notification_interval_summary">How often to check for new notifications? Each check marks them as read on Backloggd.</string>
+    <string name="interval_15_minutes">15 Minutes</string>
+    <string name="interval_1_hour">1 Hour</string>
+    <string name="interval_4_hours">4 Hours</string>
+    <string name="interval_never">Never</string>
+    <string name="pref_category_wishlist">Wishlist Release Notification</string>
+    <string name="pref_reminder_time_title">Reminder Time</string>
+    <string name="pref_reminder_time_summary">Set the time for the daily reminder (default 9:00)</string>
+    <string name="pref_category_about">About</string>
+    <string name="pref_developer_title">Developer</string>
+    <string name="pref_developer_summary" translatable="false">Tysk</string>
+    <!-- Debug builds only. -->
+    <string name="pref_category_debug" translatable="false">Debug</string>
+    <string name="pref_debug_run_notification_title" translatable="false">Run Notification Check Now</string>
+    <string name="pref_debug_run_notification_summary" translatable="false">Triggers NotificationCheckWorker as a one-time job</string>
+    <string name="pref_debug_run_wishlist_title" translatable="false">Run Wishlist Check Now</string>
+    <string name="pref_debug_run_wishlist_summary" translatable="false">Triggers WishlistCheckerWorker as a one-time job</string>
 </resources>
