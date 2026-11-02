@@ -11,11 +11,13 @@ import android.webkit.CookieManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
+import androidx.annotation.WorkerThread;
 import androidx.preference.PreferenceManager;
 import androidx.work.Constraints;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
@@ -32,6 +34,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import de.wagenknecht.backloggd.R;
@@ -46,6 +49,8 @@ public class WishlistCheckerWorker extends Worker {
     private static final String PREF_REMINDER_HOUR = "daily_notification_hour";
     private static final String PREF_REMINDER_MINUTE = "daily_notification_minute";
     public static final String WORK_NAME = "WishlistChecker";
+    /** Marks the regular daily run, as opposed to a retry. */
+    private static final String TAG_DAILY = "wishlist-daily";
     /** Holds one column per game on the wishlist page. */
     private static final String GAMES_CONTAINER_ID = "user_games";
     /** The site shows 40 games a page; this covers wishlists of up to 400 games this year. */
@@ -277,12 +282,54 @@ public class WishlistCheckerWorker extends Worker {
     }
 
     /**
-     * Makes sure the daily check is scheduled, leaving one that is already waiting alone. The app
-     * calls this on every start; replacing there would drop the retry of a run that failed this
-     * morning and skip today's reminders.
+     * Makes sure the daily check is scheduled. The app calls this on every start. A waiting retry,
+     * or a run still waiting for a connection, stays: replacing it would skip today's reminders.
+     * A daily run that no longer falls on the reminder time, because the time zone or daylight
+     * saving time changed since it was planned, moves to the right time.
      */
     public static void ensureScheduled(Context context) {
-        scheduleNextWorker(context, ExistingWorkPolicy.KEEP);
+        Context appContext = context.getApplicationContext();
+        // Looking at the waiting run reads WorkManager's database, so not on the main thread.
+        new Thread(() -> ensureScheduledNow(appContext)).start();
+    }
+
+    @WorkerThread
+    @VisibleForTesting
+    static void ensureScheduledNow(Context context) {
+        WorkInfo waiting = null;
+        try {
+            for (WorkInfo info : WorkManager.getInstance(context).getWorkInfosForUniqueWork(WORK_NAME).get()) {
+                if (!info.getState().isFinished()) {
+                    waiting = info;
+                }
+            }
+        } catch (ExecutionException | InterruptedException e) {
+            Log.w(TAG, "Could not look at the waiting wishlist check.", e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        if (waiting == null) {
+            scheduleNextWorker(context, ExistingWorkPolicy.KEEP);
+        } else if (waiting.getState() == WorkInfo.State.ENQUEUED
+                && isMisplacedDailyRun(waiting.getTags().contains(TAG_DAILY), waiting.getRunAttemptCount(),
+                        waiting.getNextScheduleTimeMillis(), nextRunTime(context).getTimeInMillis(),
+                        System.currentTimeMillis())) {
+            Log.d(TAG, "The waiting daily check no longer falls on the reminder time.");
+            scheduleNextWorker(context, ExistingWorkPolicy.REPLACE);
+        }
+    }
+
+    /**
+     * True for a daily run, not yet due and never tried, that is planned more than a minute away
+     * from the next reminder time as the clock reads now.
+     */
+    @VisibleForTesting
+    static boolean isMisplacedDailyRun(boolean daily, int runAttempts, long plannedMillis,
+                                       long reminderMillis, long nowMillis) {
+        return daily && runAttempts == 0 && plannedMillis > nowMillis
+                && Math.abs(plannedMillis - reminderMillis) > TimeUnit.MINUTES.toMillis(1);
     }
 
     /** Schedules the next daily check, replacing whatever is waiting, e.g. after a time change. */
@@ -290,24 +337,28 @@ public class WishlistCheckerWorker extends Worker {
         scheduleNextWorker(context, ExistingWorkPolicy.REPLACE);
     }
 
-    private static void scheduleNextWorker(Context context, ExistingWorkPolicy policy) {
-        int hour = getReminderHour(context);
-        int minute = getReminderMinute(context);
-
+    /** The next time the clock shows the reminder time: today if it is still ahead, else tomorrow. */
+    private static Calendar nextRunTime(Context context) {
         Calendar nextRun = Calendar.getInstance();
-        nextRun.set(Calendar.HOUR_OF_DAY, hour);
-        nextRun.set(Calendar.MINUTE, minute);
+        nextRun.set(Calendar.HOUR_OF_DAY, getReminderHour(context));
+        nextRun.set(Calendar.MINUTE, getReminderMinute(context));
         nextRun.set(Calendar.SECOND, 0);
+        nextRun.set(Calendar.MILLISECOND, 0);
 
         if (nextRun.before(Calendar.getInstance())) {
             nextRun.add(Calendar.DAY_OF_YEAR, 1);
         }
+        return nextRun;
+    }
 
+    private static void scheduleNextWorker(Context context, ExistingWorkPolicy policy) {
+        Calendar nextRun = nextRunTime(context);
         long delay = nextRun.getTimeInMillis() - System.currentTimeMillis();
 
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(WishlistCheckerWorker.class)
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
                 .setConstraints(NEEDS_NETWORK)
+                .addTag(TAG_DAILY)
                 .build();
 
         WorkManager.getInstance(context).enqueueUniqueWork(

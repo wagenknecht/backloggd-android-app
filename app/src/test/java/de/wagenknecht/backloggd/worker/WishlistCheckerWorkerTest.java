@@ -1,6 +1,7 @@
 package de.wagenknecht.backloggd.worker;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -106,6 +107,29 @@ public class WishlistCheckerWorkerTest {
     public void stopsWithoutPagination() {
         assertNull(WishlistCheckerWorker.nextPageUrl(Jsoup.parse(
                 page(column("A", "Dec 10, 2026", "a.jpg")), WISHLIST_URL)));
+    }
+
+    private static final long HOUR = 60 * 60 * 1000L;
+    private static final long NOW = 1_800_000_000_000L;
+
+    @Test
+    public void movesADailyRunPlannedForAnotherClock() {
+        // Planned for 9:00 before daylight saving time ended; 9:00 is now an hour later.
+        assertTrue(WishlistCheckerWorker.isMisplacedDailyRun(true, 0, NOW + 5 * HOUR, NOW + 6 * HOUR, NOW));
+    }
+
+    @Test
+    public void leavesADailyRunAtTheReminderTime() {
+        assertFalse(WishlistCheckerWorker.isMisplacedDailyRun(true, 0, NOW + 5 * HOUR, NOW + 5 * HOUR, NOW));
+        assertFalse("seconds apart", WishlistCheckerWorker.isMisplacedDailyRun(true, 0, NOW + 5 * HOUR + 30_000, NOW + 5 * HOUR, NOW));
+    }
+
+    @Test
+    public void leavesRetriesAndOverdueRunsAlone() {
+        // Each still has today's reminders to deliver; moving it would skip them.
+        assertFalse("retry", WishlistCheckerWorker.isMisplacedDailyRun(false, 0, NOW + HOUR / 2, NOW + 20 * HOUR, NOW));
+        assertFalse("backing off", WishlistCheckerWorker.isMisplacedDailyRun(true, 2, NOW + HOUR, NOW + 20 * HOUR, NOW));
+        assertFalse("waiting for a connection", WishlistCheckerWorker.isMisplacedDailyRun(true, 0, NOW - HOUR, NOW + 23 * HOUR, NOW));
     }
 
     @Test
