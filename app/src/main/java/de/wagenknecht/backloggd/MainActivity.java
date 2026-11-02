@@ -23,6 +23,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
@@ -372,6 +373,30 @@ public class MainActivity extends AppCompatActivity {
     private void restorePage(@NonNull Bundle savedInstanceState) {
         String url = savedInstanceState.getString(STATE_URL);
         myWeb.loadUrl(isSafeToLoad(url) ? url : BACKLOGGD_URL);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        myWeb.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        myWeb.onPause();
+        // The WebView only writes cookies to disk now and then. Once in the background the app
+        // can be killed at any moment, and a login that never reached the disk would be gone for
+        // the next start and for the workers.
+        CookieManager.getInstance().flush();
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        // A WebView holds its renderer until destroyed, which it must not be while still attached.
+        ((ViewGroup) myWeb.getParent()).removeView(myWeb);
+        myWeb.destroy();
+        super.onDestroy();
     }
 
     @Override
