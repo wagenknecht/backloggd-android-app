@@ -16,8 +16,14 @@
         android:theme="@style/Theme.Backloggd"
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="36">
+        <!--
+            The WebView keeps the page, its history and anything typed into it only as long as the
+            activity lives, so rotating, resizing, folding and switching dark mode must not
+            recreate it. The layout has no variants for any of these, so there is nothing to reload.
+        -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Backloggd.Starting">

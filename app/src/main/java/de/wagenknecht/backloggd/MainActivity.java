@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     /** The splash screen never waits longer than this for the first page. */
     private static final long SPLASH_MAX_MS = 2000;
+    private static final String STATE_URL = "current_url";
 
     /** One entry of the About dialog. */
     private static final class AboutLink {
@@ -347,7 +348,30 @@ public class MainActivity extends AppCompatActivity {
         NotificationCheckWorker.schedule(this);
         WishlistCheckerWorker.scheduleNextWorker(this);
 
-        handleIntent(getIntent());
+        // A recreation, e.g. after a font size change or once the system killed the app in the
+        // background, comes back with the intent it was started with. Handling that again would
+        // replace the page the user was on with the link or shortcut they opened back then.
+        if (savedInstanceState == null) {
+            handleIntent(getIntent());
+        } else {
+            restorePage(savedInstanceState);
+        }
+    }
+
+    /**
+     * Keeps only the current page, not the WebView's whole history: WebView.saveState can outgrow
+     * what a saved state may hold and crash the app. The common changes (rotation, resizing, dark
+     * mode) do not get here at all, the manifest keeps the activity alive through them.
+     */
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(STATE_URL, myWeb.getUrl());
+    }
+
+    private void restorePage(@NonNull Bundle savedInstanceState) {
+        String url = savedInstanceState.getString(STATE_URL);
+        myWeb.loadUrl(isSafeToLoad(url) ? url : BACKLOGGD_URL);
     }
 
     @Override
@@ -379,7 +403,7 @@ public class MainActivity extends AppCompatActivity {
         }
         if (intent.hasExtra("postLaunchAction")) {
             String postLaunchAction = intent.getStringExtra("postLaunchAction");
-            // Consumed once, so a rotation does not open the same shortcut again.
+            // Consumed once, so the same shortcut never runs twice.
             intent.removeExtra("postLaunchAction");
             if (myWeb.getUrl() == null && ("log_game".equals(postLaunchAction) || "search".equals(postLaunchAction))) {
                 // A launcher shortcut starts with an empty WebView; these act on the loaded page.
