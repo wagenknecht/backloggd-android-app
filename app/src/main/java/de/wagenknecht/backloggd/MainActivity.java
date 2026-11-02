@@ -209,6 +209,9 @@ public class MainActivity extends AppCompatActivity {
 
         myWeb.getSettings().setJavaScriptEnabled(true);
         myWeb.getSettings().setDomStorageEnabled(true);
+        // Off by default only from Android 11 on. The app never loads local files, and a page
+        // that holds the login has no business reading them.
+        myWeb.getSettings().setAllowFileAccess(false);
         // The WebView is white until the first paint; match the site instead.
         myWeb.setBackgroundColor(ContextCompat.getColor(this, R.color.back_primary));
         // Pull-to-refresh is the overscroll gesture here. The page's own scrollbars are hidden via
