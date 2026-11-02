@@ -2,26 +2,15 @@ package de.wagenknecht.backloggd.worker;
 
 import static de.wagenknecht.backloggd.ApiConstants.BACKLOGGD_URL;
 
-import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.os.Build;
 import android.util.Log;
 import android.webkit.CookieManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.PreferenceManager;
 import androidx.work.Constraints;
 import androidx.work.ExistingWorkPolicy;
@@ -45,16 +34,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import de.wagenknecht.backloggd.MainActivity;
 import de.wagenknecht.backloggd.R;
 import de.wagenknecht.backloggd.util.BackloggdRequest;
 import de.wagenknecht.backloggd.util.ImageDownloader;
+import de.wagenknecht.backloggd.util.PushNotifications;
 import de.wagenknecht.backloggd.util.UsernameHelper;
 
 public class WishlistCheckerWorker extends Worker {
 
     private static final String TAG = "WishlistCheckerWorker";
-    private static final String CHANNEL_ID = "BACKLOGGD_WISHLIST_RELEASE";
+    private static final String PREF_REMINDER_HOUR = "daily_notification_hour";
+    private static final String PREF_REMINDER_MINUTE = "daily_notification_minute";
     public static final String WORK_NAME = "WishlistChecker";
     /** Holds one column per game on the wishlist page. */
     private static final String GAMES_CONTAINER_ID = "user_games";
@@ -151,12 +141,15 @@ public class WishlistCheckerWorker extends Worker {
                         if (!releaseDateStr.equals(storedDate)) {
                             Log.d(TAG, "Found game releasing today: " + gameTitle);
                             Bitmap gameCoverBitmap = ImageDownloader.downloadDownsampled(imageUrl);
-                            showPushNotification(
+                            boolean shown = PushNotifications.post(context, PushNotifications.Channel.WISHLIST,
+                                    gameTitle.hashCode(),
                                     context.getString(R.string.wishlist_notification_title),
                                     context.getString(R.string.wishlist_notification_message, gameTitle),
-                                    gameTitle,
-                                    gameCoverBitmap);
-                            releasePrefs.edit().putString(gameTitle, releaseDateStr).apply();
+                                    gameCoverBitmap, null);
+                            // Only remembered once shown, so allowing notifications later today still brings it.
+                            if (shown) {
+                                releasePrefs.edit().putString(gameTitle, releaseDateStr).apply();
+                            }
                         } else {
                             Log.d(TAG, "Already notified for today's release of " + gameTitle);
                         }
@@ -258,48 +251,22 @@ public class WishlistCheckerWorker extends Worker {
                 today.get(Calendar.DAY_OF_MONTH) == releaseCal.get(Calendar.DAY_OF_MONTH);
     }
 
-    private void showPushNotification(String title, String contentText, String gameTitle, Bitmap gameCover) {
-        Context context = getApplicationContext();
-        createNotificationChannel(context);
-
-        int notificationId = gameTitle.hashCode();
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationId, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_notification)
-                .setColor(ContextCompat.getColor(context, R.color.back_pink))
-                .setContentTitle(title)
-                .setContentText(contentText)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(contentText))
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true);
-
-        if (gameCover != null) {
-            builder.setLargeIcon(gameCover);
-        }
-
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "Cannot send notification. Permission not granted.");
-            return;
-        }
-        notificationManager.notify(notificationId, builder.build());
+    /** Hour of the daily reminder, 9 unless the user picked another time. */
+    public static int getReminderHour(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context).getInt(PREF_REMINDER_HOUR, 9);
     }
 
-    private void createNotificationChannel(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = context.getString(R.string.wishlist_channel_name);
-            String description = context.getString(R.string.wishlist_channel_description);
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
+    public static int getReminderMinute(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context).getInt(PREF_REMINDER_MINUTE, 0);
+    }
 
-            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
+    /** Stores a new reminder time and moves the next check to it. */
+    public static void setReminderTime(Context context, int hour, int minute) {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putInt(PREF_REMINDER_HOUR, hour)
+                .putInt(PREF_REMINDER_MINUTE, minute)
+                .apply();
+        scheduleNextWorker(context);
     }
 
     /**
@@ -317,9 +284,8 @@ public class WishlistCheckerWorker extends Worker {
     }
 
     private static void scheduleNextWorker(Context context, ExistingWorkPolicy policy) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        int hour = prefs.getInt("daily_notification_hour", 9);
-        int minute = prefs.getInt("daily_notification_minute", 0);
+        int hour = getReminderHour(context);
+        int minute = getReminderMinute(context);
 
         Calendar nextRun = Calendar.getInstance();
         nextRun.set(Calendar.HOUR_OF_DAY, hour);

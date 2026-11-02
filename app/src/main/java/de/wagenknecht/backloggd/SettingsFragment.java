@@ -2,7 +2,6 @@ package de.wagenknecht.backloggd;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Toast;
 
@@ -12,7 +11,6 @@ import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.PreferenceManager;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
@@ -45,12 +43,11 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             }
 
             dailyNotificationTime.setOnPreferenceClickListener(preference -> {
-                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
                 MaterialTimePicker picker = new MaterialTimePicker.Builder()
                         .setTimeFormat(TimeFormat.CLOCK_24H)
                         .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
-                        .setHour(prefs.getInt("daily_notification_hour", 9))
-                        .setMinute(prefs.getInt("daily_notification_minute", 0))
+                        .setHour(WishlistCheckerWorker.getReminderHour(requireContext()))
+                        .setMinute(WishlistCheckerWorker.getReminderMinute(requireContext()))
                         .setTitleText(preference.getTitle())
                         .build();
                 listenForReminderTime(picker, preference);
@@ -141,19 +138,14 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 
     private void listenForReminderTime(MaterialTimePicker picker, Preference preference) {
         picker.addOnPositiveButtonClickListener(v -> {
-            PreferenceManager.getDefaultSharedPreferences(requireContext()).edit()
-                    .putInt("daily_notification_hour", picker.getHour())
-                    .putInt("daily_notification_minute", picker.getMinute())
-                    .apply();
+            WishlistCheckerWorker.setReminderTime(requireContext(), picker.getHour(), picker.getMinute());
             updateDailyNotificationTimeSummary(preference);
-            WishlistCheckerWorker.scheduleNextWorker(requireContext());
         });
     }
 
     private void updateDailyNotificationTimeSummary(Preference preference) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
-        int hour = prefs.getInt("daily_notification_hour", 9);
-        int minute = prefs.getInt("daily_notification_minute", 0);
+        int hour = WishlistCheckerWorker.getReminderHour(requireContext());
+        int minute = WishlistCheckerWorker.getReminderMinute(requireContext());
         preference.setSummary(String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
     }
 

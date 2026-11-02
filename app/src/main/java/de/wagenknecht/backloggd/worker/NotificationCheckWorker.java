@@ -2,25 +2,14 @@ package de.wagenknecht.backloggd.worker;
 
 import static de.wagenknecht.backloggd.ApiConstants.NOTIFICATION_URL;
 
-import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.os.Build;
 import android.util.Log;
 import android.webkit.CookieManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.PreferenceManager;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
@@ -39,15 +28,14 @@ import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import de.wagenknecht.backloggd.MainActivity;
 import de.wagenknecht.backloggd.R;
 import de.wagenknecht.backloggd.util.BackloggdRequest;
 import de.wagenknecht.backloggd.util.ImageDownloader;
+import de.wagenknecht.backloggd.util.PushNotifications;
 
 public class NotificationCheckWorker extends Worker {
 
     private static final String TAG = "NotificationCheckWorker";
-    private static final String CHANNEL_ID = "BACKLOGGD_NOTIFICATIONS";
     public static final String WORK_NAME = "NotificationCheck";
     private static final String PREF_INTERVAL = "notification_interval";
     private static final String DEFAULT_INTERVAL_MINUTES = "15";
@@ -100,7 +88,7 @@ public class NotificationCheckWorker extends Worker {
 
         // Fetching the page marks every notification as read on Backloggd. Without a way to show
         // them, a check would only make them disappear unseen.
-        if (!canNotify(getApplicationContext())) {
+        if (!PushNotifications.canPost(getApplicationContext(), PushNotifications.Channel.BACKLOGGD)) {
             Log.d(TAG, "Notifications are switched off. Skipping the check.");
             return Result.success();
         }
@@ -142,7 +130,8 @@ public class NotificationCheckWorker extends Worker {
                             image = ImageDownloader.downloadDownsampled(notification.imageUrl);
                         }
 
-                        showPushNotification(title, notification.text, notification.text.hashCode(), image);
+                        PushNotifications.post(getApplicationContext(), PushNotifications.Channel.BACKLOGGD,
+                                notification.text.hashCode(), title, notification.text, image, NOTIFICATION_URL);
                     } catch (RuntimeException e) {
                         Log.e(TAG, "Could not show a notification.", e);
                     }
@@ -217,65 +206,4 @@ public class NotificationCheckWorker extends Worker {
         return R.string.notification_title_default;
     }
 
-    private void showPushNotification(String title, String contentText, int notificationId, Bitmap image) {
-        Context context = getApplicationContext();
-        createNotificationChannel(context);
-
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.putExtra("urlToLoad", NOTIFICATION_URL);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_notification)
-                .setColor(ContextCompat.getColor(context, R.color.back_pink))
-                .setContentTitle(title)
-                .setContentText(contentText)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true);
-
-        if (image != null) {
-            builder.setLargeIcon(image);
-        } else {
-            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(contentText));
-        }
-
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
-        
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "Cannot send notification. Permission not granted.");
-            return; 
-        }
-        notificationManager.notify(notificationId, builder.build());
-    }
-
-    /** False when the permission is missing, or the app or this channel is switched off. */
-    private static boolean canNotify(Context context) {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                || !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-            return false;
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // The channel only exists once created, and a new one is never switched off.
-            createNotificationChannel(context);
-            NotificationChannel channel = context.getSystemService(NotificationManager.class)
-                    .getNotificationChannel(CHANNEL_ID);
-            return channel != null && channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
-        }
-        return true;
-    }
-
-    private static void createNotificationChannel(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = context.getString(R.string.notification_channel_name);
-            String description = context.getString(R.string.notification_channel_description);
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-
-            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
-    }
 }
