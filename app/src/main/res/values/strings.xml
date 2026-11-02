@@ -64,7 +64,7 @@
     <string name="notification_title_comment">New Comment</string>
     <string name="notification_title_default">Backloggd</string>
     <string name="wishlist_channel_name">Wishlist Game Releases</string>
-    <string name="wishlist_channel_description">Notifications for when games on your wishlist get a release date.</string>
+    <string name="wishlist_channel_description">Notifies you on the day a game on your wishlist releases.</string>
     <string name="wishlist_notification_title">Releasing Today!</string>
     <string name="wishlist_notification_message">%1$s releases today.</string>
 </resources>

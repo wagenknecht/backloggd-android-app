@@ -347,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
         }
         askNotificationPermission();
         NotificationCheckWorker.schedule(this);
-        WishlistCheckerWorker.scheduleNextWorker(this);
+        WishlistCheckerWorker.ensureScheduled(this);
 
         // A recreation, e.g. after a font size change or once the system killed the app in the
         // background, comes back with the intent it was started with. Handling that again would

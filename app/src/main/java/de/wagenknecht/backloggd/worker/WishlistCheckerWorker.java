@@ -16,13 +16,16 @@ import android.util.Log;
 import android.webkit.CookieManager;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.PreferenceManager;
+import androidx.work.Constraints;
 import androidx.work.ExistingWorkPolicy;
+import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
@@ -55,6 +58,12 @@ public class WishlistCheckerWorker extends Worker {
     public static final String WORK_NAME = "WishlistChecker";
     /** Holds one column per game on the wishlist page. */
     private static final String GAMES_CONTAINER_ID = "user_games";
+    /** The site shows 40 games a page; this covers wishlists of up to 400 games this year. */
+    private static final int MAX_PAGES = 10;
+    /** Offline at the reminder time, the check waits for a connection instead of failing. */
+    private static final Constraints NEEDS_NETWORK = new Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build();
 
     public WishlistCheckerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -97,25 +106,35 @@ public class WishlistCheckerWorker extends Worker {
         }
 
         int currentYear = Calendar.getInstance().get(Calendar.YEAR);
-        String wishlistUrl = BACKLOGGD_URL + "/u/" + username + "/wishlist/release/type:wishlist;release_year:" + currentYear;
+        String wishlistUrl = BACKLOGGD_URL + "/u/" + username + "/games/wishlist/by/release/type:wishlist;release_year:" + currentYear + "/";
 
         try {
-            Connection.Response wishlistResponse = BackloggdRequest
-                    .forUrl(context, wishlistUrl, cookies)
-                    .execute();
-            int statusCode = wishlistResponse.statusCode();
-            if (statusCode != 200) {
-                Log.w(TAG, "Wishlist request returned status " + statusCode + ". Body excerpt: "
-                        + wishlistResponse.body().substring(0, Math.min(500, wishlistResponse.body().length())));
-                return Result.retry();
+            // Sorted latest release first, so today's games sit behind all later ones this year,
+            // possibly several pages in.
+            List<WishlistGame> games = new ArrayList<>();
+            String pageUrl = wishlistUrl;
+            int pages = 0;
+            while (pageUrl != null && pages < MAX_PAGES) {
+                Connection.Response wishlistResponse = BackloggdRequest
+                        .forUrl(context, pageUrl, cookies)
+                        .execute();
+                int statusCode = wishlistResponse.statusCode();
+                if (statusCode != 200) {
+                    Log.w(TAG, "Wishlist request returned status " + statusCode + ". Body excerpt: "
+                            + wishlistResponse.body().substring(0, Math.min(500, wishlistResponse.body().length())));
+                    return Result.retry();
+                }
+                Document doc = wishlistResponse.parse();
+                if (pages == 0 && doc.getElementById(GAMES_CONTAINER_ID) == null) {
+                    // Without the container this is not the page we expect, e.g. after a redesign.
+                    Log.w(TAG, "Wishlist page has no #" + GAMES_CONTAINER_ID + "; its markup may have changed. Title: "
+                            + doc.title());
+                }
+                games.addAll(parseWishlist(doc));
+                pageUrl = nextPageUrl(doc);
+                pages++;
             }
-            Document doc = wishlistResponse.parse();
-            if (doc.getElementById(GAMES_CONTAINER_ID) == null) {
-                // Without the container this is not the page we expect, e.g. after a redesign.
-                Log.w(TAG, "Wishlist page has no #" + GAMES_CONTAINER_ID + "; its markup may have changed. Title: "
-                        + doc.title());
-            }
-            List<WishlistGame> games = parseWishlist(doc);
+            Log.d(TAG, "Read " + games.size() + " games from " + pages + " wishlist page(s).");
 
             if (games.isEmpty()) {
                 Log.d(TAG, "No games found on the wishlist page for the current year.");
@@ -198,6 +217,21 @@ public class WishlistCheckerWorker extends Worker {
         return games;
     }
 
+    /**
+     * The next page of the list, or null on the last one, where "Next" has no link. Only
+     * Backloggd pages qualify, since the request carries the login cookies.
+     */
+    @VisibleForTesting
+    @Nullable
+    static String nextPageUrl(Document doc) {
+        Element next = doc.selectFirst("nav.pagy a[aria-label=Next][href]");
+        if (next == null) {
+            return null;
+        }
+        String url = next.absUrl("href");
+        return url.startsWith(BACKLOGGD_URL + "/") ? url : null;
+    }
+
     private boolean isReleasedToday(String releaseDateStr) {
         SimpleDateFormat formatWithComma = new SimpleDateFormat("MMM dd, yyyy", Locale.ENGLISH);
         SimpleDateFormat formatWithoutComma = new SimpleDateFormat("MMM dd yyyy", Locale.ENGLISH);
@@ -268,7 +302,21 @@ public class WishlistCheckerWorker extends Worker {
         }
     }
 
+    /**
+     * Makes sure the daily check is scheduled, leaving one that is already waiting alone. The app
+     * calls this on every start; replacing there would drop the retry of a run that failed this
+     * morning and skip today's reminders.
+     */
+    public static void ensureScheduled(Context context) {
+        scheduleNextWorker(context, ExistingWorkPolicy.KEEP);
+    }
+
+    /** Schedules the next daily check, replacing whatever is waiting, e.g. after a time change. */
     public static void scheduleNextWorker(Context context) {
+        scheduleNextWorker(context, ExistingWorkPolicy.REPLACE);
+    }
+
+    private static void scheduleNextWorker(Context context, ExistingWorkPolicy policy) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         int hour = prefs.getInt("daily_notification_hour", 9);
         int minute = prefs.getInt("daily_notification_minute", 0);
@@ -286,19 +334,22 @@ public class WishlistCheckerWorker extends Worker {
 
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(WishlistCheckerWorker.class)
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                .setConstraints(NEEDS_NETWORK)
                 .build();
 
         WorkManager.getInstance(context).enqueueUniqueWork(
                 WORK_NAME,
-                ExistingWorkPolicy.REPLACE,
+                policy,
                 workRequest);
 
-        Log.d(TAG, "Wishlist checker worker scheduled to run at " + nextRun.getTime());
+        Log.d(TAG, "Wishlist checker worker scheduled to run at " + nextRun.getTime()
+                + (policy == ExistingWorkPolicy.KEEP ? " unless a run is already waiting" : ""));
     }
 
     private static void scheduleRetry(Context context, long delay, TimeUnit unit) {
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(WishlistCheckerWorker.class)
                 .setInitialDelay(delay, unit)
+                .setConstraints(NEEDS_NETWORK)
                 .build();
 
         WorkManager.getInstance(context).enqueueUniqueWork(

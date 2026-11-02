@@ -1,6 +1,7 @@
 package de.wagenknecht.backloggd.worker;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.jsoup.Jsoup;
@@ -69,5 +70,49 @@ public class WishlistCheckerWorkerTest {
     public void emptyWhenTheGamesContainerIsMissing() {
         assertTrue(WishlistCheckerWorker.parseWishlist(Jsoup.parse(
                 "<html><body><div id=\"user-games-library-container\"></div></body></html>")).isEmpty());
+    }
+
+    private static final String WISHLIST_URL =
+            "https://backloggd.com/u/Tysk/games/wishlist/by/release/type:wishlist;release_year:2026/";
+
+    /** The pagination below the games, as the site renders it; prev and next are either links or disabled. */
+    private static String pagination(String nextLink) {
+        return "<nav class=\"pagy nav\" aria-label=\"Pages\">"
+                + "<a role=\"link\" aria-disabled=\"true\" aria-label=\"Previous\">‹&nbsp;Prev</a>"
+                + "<a role=\"link\" aria-disabled=\"true\" aria-current=\"page\" class=\"current\">1</a>"
+                + (nextLink != null
+                        ? "<a href=\"" + nextLink + "\">2</a><a href=\"" + nextLink + "\" aria-label=\"Next\">Next&nbsp;›</a>"
+                        : "<a role=\"link\" aria-disabled=\"true\" aria-label=\"Next\">Next&nbsp;›</a>")
+                + "</nav>";
+    }
+
+    @Test
+    public void followsTheNextLinkToTheFollowingPage() {
+        String nextPage = WishlistCheckerWorker.nextPageUrl(Jsoup.parse(
+                page(column("A", "Dec 10, 2026", "a.jpg")) + pagination(
+                        "/u/Tysk/games/wishlist/by/release/type:wishlist;release_year:2026?page=2"),
+                WISHLIST_URL));
+
+        assertEquals("https://backloggd.com/u/Tysk/games/wishlist/by/release/type:wishlist;release_year:2026?page=2", nextPage);
+    }
+
+    @Test
+    public void stopsOnTheLastPage() {
+        assertNull(WishlistCheckerWorker.nextPageUrl(Jsoup.parse(
+                page(column("A", "Dec 10, 2026", "a.jpg")) + pagination(null), WISHLIST_URL)));
+    }
+
+    @Test
+    public void stopsWithoutPagination() {
+        assertNull(WishlistCheckerWorker.nextPageUrl(Jsoup.parse(
+                page(column("A", "Dec 10, 2026", "a.jpg")), WISHLIST_URL)));
+    }
+
+    @Test
+    public void neverFollowsALinkToAnotherSite() {
+        // The request for the next page carries the login cookies.
+        assertNull(WishlistCheckerWorker.nextPageUrl(Jsoup.parse(
+                page(column("A", "Dec 10, 2026", "a.jpg")) + pagination("https://example.com/?page=2"),
+                WISHLIST_URL)));
     }
 }
