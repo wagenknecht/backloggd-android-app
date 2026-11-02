@@ -77,6 +77,13 @@ public class WishlistCheckerWorker extends Worker {
         Context context = getApplicationContext();
         Log.d(TAG, "Worker started. Checking wishlist for games releasing today.");
 
+        // Without a way to show the reminder, reading the wishlist and its covers is wasted.
+        if (!PushNotifications.canPost(context, PushNotifications.Channel.WISHLIST)) {
+            Log.d(TAG, "Wishlist reminders are switched off. Trying again tomorrow.");
+            scheduleNextWorker(context);
+            return Result.success();
+        }
+
         String cookies = CookieManager.getInstance().getCookie(BACKLOGGD_URL);
         if (cookies == null || cookies.isEmpty()) {
             Log.w(TAG, "Could not get cookies. User is probably not logged in. Trying again tomorrow.");
