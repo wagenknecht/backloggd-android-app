@@ -1,0 +1,7 @@
+• The app keeps your page when you rotate, resize or switch dark mode
+• Pulling down in an open dialog no longer reloads the page and loses your input
+• Notifications are no longer marked as read when the app can't show them
+• Wishlist reminders cover more than 40 games this year and wait for a connection when offline
+• Profile links follow a renamed or switched account
+• Long comments in notifications can be expanded
+• Checks for app updates at most once a day
