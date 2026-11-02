@@ -1,6 +1,7 @@
 package de.wagenknecht.backloggd.worker;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import android.content.Context;
 
@@ -31,6 +32,10 @@ public class WishlistReminderTimeTest {
         minuteBefore = WishlistCheckerWorker.getReminderMinute(context);
     }
 
+    /**
+     * Puts the time back. Like a change in the settings, this replaces whatever check was waiting
+     * in the installed app, a pending retry included.
+     */
     @After
     public void tearDown() {
         WishlistCheckerWorker.setReminderTime(context, hourBefore, minuteBefore);
@@ -56,6 +61,7 @@ public class WishlistReminderTimeTest {
                 waiting = info;
             }
         }
+        assertNotNull("No wishlist check is waiting after the time was set", waiting);
         Calendar due = Calendar.getInstance();
         due.setTimeInMillis(waiting.getNextScheduleTimeMillis());
         assertEquals(hour, due.get(Calendar.HOUR_OF_DAY));

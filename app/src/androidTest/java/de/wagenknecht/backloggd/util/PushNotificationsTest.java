@@ -3,11 +3,13 @@ package de.wagenknecht.backloggd.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.os.Build;
 import android.service.notification.StatusBarNotification;
 
 import androidx.core.app.NotificationCompat;
@@ -29,6 +31,8 @@ public class PushNotificationsTest {
 
     @Before
     public void setUp() {
+        // The permission only exists from Android 13 on; before, granting it throws.
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU);
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         manager = context.getSystemService(NotificationManager.class);
         InstrumentationRegistry.getInstrumentation().getUiAutomation()
@@ -37,7 +41,9 @@ public class PushNotificationsTest {
 
     @After
     public void tearDown() {
-        manager.cancel(ID);
+        if (manager != null) {
+            manager.cancel(ID);
+        }
     }
 
     @Test
