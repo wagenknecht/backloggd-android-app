@@ -1,0 +1,88 @@
+/*
+ * Shared by the app's own themes (both OLEDs, Green), added after the theme's variables. Each
+ * theme sets the site's --back-* variables to a shadcn/ui palette; the site takes nearly every
+ * colour from those. The rules here cover the places that hard-code a colour of the site's
+ * blue-tinted palette, and take the theme's colours from the same variables.
+ */
+
+html, body { background-color: var(--back-primary) !important; }
+
+/* Platform and genre pills, on the page and in the log dialog. */
+.pill-link,
+.backloggd-modal .modal-content .system .pill-link { background-color: var(--back-field) !important; }
+.pill-link:hover { background-color: var(--back-interact) !important; }
+
+/* Outlined "fill-in" buttons and the GOTY tabs. */
+.fill-in, .fill-in-outline, .fill-in-slim, #goty-nav-header a { border-color: var(--back-field-border) !important; }
+.fill-in:hover, .fill-in-outline:hover, .fill-in-slim:hover { background-color: #ffffff14 !important; }
+
+/* Star ratings that are not filled in. */
+.star-ratings-static, .bar-stars { color: #ffffff26 !important; }
+#game-profile #game-body .star-rating, .rate-display label,
+#search-results .result .star-rating-field { color: var(--back-field-icon) !important; }
+
+/* Bootstrap's grey is too dark on these backgrounds; shadcn's muted text instead. */
+.text-secondary, .roadmap-like-btn { color: var(--back-text-secondary) !important; }
+
+/* Text tinted blue on the site. */
+#search-title small, .datepicker-dropdown::after { color: var(--back-text-secondary) !important; }
+#friends-activity .user-reviewed, .friend-activity .user-reviewed { color: var(--back-text-disabled) !important; }
+.documentation .table tbody tr, .documentation li, .documentation p { color: var(--back-text-review) !important; }
+.comment .comment-body strong, .review-card .card-text strong { color: var(--back-text) !important; }
+
+/* The static 404 page brings its own colours; the theme's variables still apply to it. */
+body.error-page { color: var(--back-text-secondary) !important; }
+body.error-page a { color: var(--back-pink) !important; }
+body.error-page a:hover { color: var(--back-pink-dk) !important; }
+
+/* Turbo's bar at the top while the next page loads. */
+.turbo-progress-bar { background-color: var(--back-pink) !important; }
+
+/* The site's pink, hard-coded instead of taken from its variables. */
+.alert-pink { background-color: color-mix(in srgb, var(--back-pink-dk) 20%, transparent) !important; }
+a.alert-pink:hover { background-color: color-mix(in srgb, var(--back-pink-dk) 30%, transparent) !important; }
+.bar-w { background-color: var(--back-pink) !important; }
+#game-detail-navigation .btn-nav.current:hover,
+#log-editor-full #log-editor-nav .btn-nav.current:hover {
+    background-color: color-mix(in srgb, var(--back-pink) 19%, transparent) !important;
+}
+.time-played-overview .time-played-stat i {
+    background-color: color-mix(in srgb, var(--back-pink-lt) 12%, var(--back-primary)) !important;
+    color: var(--back-pink-lt) !important;
+}
+.time-played-overview .time-played-stat .label { color: var(--back-pink-lt) !important; }
+/*
+ * Days played in the journal calendar of the log dialog. The site hands FullCalendar its pink as
+ * an inline style, which only !important outweighs. Same for the blue start/finish marker.
+ */
+#playthrough-calendar .fc-event {
+    background-color: var(--back-pink-dk) !important;
+    border-color: var(--back-pink-dk) !important;
+}
+#playthrough-calendar .start-finish-tag-circle {
+    background-color: var(--back-interact-secondary) !important;
+    color: var(--back-primary) !important;
+}
+
+/* Pink-tinted cards, e.g. "Time Played" on a game: a plain card with the accent on its edge. */
+.backloggd-container.theme-pink {
+    background-color: var(--back-secondary) !important;
+    border-color: color-mix(in srgb, var(--back-pink) 40%, transparent) !important;
+}
+.backloggd-container.theme-pink .label, .backloggd-container.theme-pink i { color: var(--back-pink-lt) !important; }
+/* Stars while hovering a rating. The site marks this !important too; the html prefix outweighs it. */
+html .star-rating input:checked + label:hover, html .star-rating input:checked ~ label:hover,
+html .star-rating input:checked ~ label:hover ~ label, html .star-rating label:hover ~ input:checked ~ label,
+html .star-rating-field input:checked + label:hover, html .star-rating-field input:checked ~ label:hover,
+html .star-rating-field input:checked ~ label:hover ~ label,
+html .star-rating-field label:hover ~ input:checked ~ label { color: var(--back-pink) !important; }
+
+/* Dividers and overlays tinted blue on the site. */
+hr { border-color: #ffffff1a !important; }
+.journal_entry, .user-game-log { border-bottom-color: #ffffff1a !important; }
+#journal-game-modal .modal-body, #log-editor-full .modal-body { border-top-color: #ffffff1a !important; }
+.game-cover .status-overlay, .game-cover-img .status-overlay { background-color: #000000db !important; }
+#journal-log-form .played-fields-lock { background-color: #000000cc !important; }
+.tippy-box[data-theme~="backloggd-badge"] { background-color: var(--back-field) !important; }
+.navbar .dropdown-menu { box-shadow: 0 4px 12px #00000080 !important; }
+#pw-oop-bottom_rail, .horizontal-sticky, .publift-widget-sticky_footer { background-color: #00000066 !important; }

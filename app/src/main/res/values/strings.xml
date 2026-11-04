@@ -64,6 +64,12 @@
     <string name="wishlist_channel_description">Notifies you on the day a game on your wishlist releases.</string>
     <string name="wishlist_notification_title">Releasing Today!</string>
     <string name="wishlist_notification_message">%1$s releases today.</string>
+    <string name="pref_category_appearance">Appearance</string>
+    <string name="pref_theme_title">Theme</string>
+    <string name="theme_backloggd">Backloggd</string>
+    <string name="theme_oled">OLED</string>
+    <string name="theme_oled_backloggd">OLED Pink</string>
+    <string name="theme_green">Forest</string>
     <string name="pref_category_notifications">Backloggd Notifications</string>
     <string name="pref_notification_interval_title">Notification Interval</string>
     <string name="pref_notification_interval_summary">How often to check for new notifications? Each check marks them as read on Backloggd.</string>

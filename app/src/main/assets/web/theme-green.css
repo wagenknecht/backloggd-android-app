@@ -1,0 +1,51 @@
+/*
+ * Forest theme (stored as "green"): surfaces in the hue of Tailwind's green (142°) instead of the
+ * site's navy, with Tailwind's amber in place of the site's pink, so the accent stands out from
+ * the green around it. The page is a clearly green dark, not the near-black of OLED; cards,
+ * fields and buttons get lighter from there, and secondary text is a greyish green.
+ * theme-shadcn.css follows; see theme-oled.css for why html:root.
+ */
+html:root {
+    --back-primary: #0e2014;
+    --back-secondary: #152d1e;
+    --primary-surface: #0e2014;
+    --secondary-surface: #152d1e;
+    --back-highlight: #bbf7d00d;
+
+    --back-field: #1d3a28;
+    --back-field-highlight: #23432f;
+    --back-field-background: #0e2014;
+    --back-field-border: #bbf7d026;
+    --back-field-border-hover: #bbf7d040;
+    --back-field-border-focus: #688d76;
+    --back-field-placeholder: #688d76;
+    --back-field-icon: #496e57;
+    --back-field-icon-secondary: #688d76;
+    --field-background-on-secondary: #1d3a28;
+    --field-border-on-secondary: #2b4f38;
+    --interact-background-on-secondary: #2b4f38;
+    --back-dropdown-divider: #1d3a28;
+
+    --back-interact: #2b4f38;
+    --back-interact-secondary: #bbf7d0;
+
+    /*
+     * Tailwind's amber-300, -400 and -600. The site puts white text on the darkest one, which
+     * would be unreadable on the lighter ambers.
+     */
+    --back-pink-lt: #fcd34d;
+    --back-pink: #fbbf24;
+    --back-pink-dk: #d97706;
+    --back-btn-toggled-text: #ffffff;
+
+    /* "Played" is pink on the site and stays so, apart from the amber accent. */
+    --back-played: #ea377a;
+    --back-type-played: #ea377a;
+
+    /* Tailwind's green-50 and -100, and a grey with a touch of green. */
+    --back-text: #f0fdf4;
+    --back-text-review: #dcfce7;
+    --back-text-secondary: #a5c0af;
+    --back-text-disabled: #a5c0af61;
+    --back-link: #dcfce7;
+}

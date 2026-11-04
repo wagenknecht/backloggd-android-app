@@ -12,12 +12,14 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import de.wagenknecht.backloggd.util.AppTheme;
 import de.wagenknecht.backloggd.util.SystemBars;
 
 public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppTheme.apply(this);
         super.onCreate(savedInstanceState);
         SystemBars.blendIn(this);
         setContentView(R.layout.activity_settings);

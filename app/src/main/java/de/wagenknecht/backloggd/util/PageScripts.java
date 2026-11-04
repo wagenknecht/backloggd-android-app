@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
  */
 public final class PageScripts {
 
-    /** Adds app.css to the page, once per page. */
+    /** Adds app.css, and the stylesheets of the picked app theme, to the page, once per page. */
     public final String injectStyle;
     public final String search;
     public final String logGame;
@@ -29,6 +29,10 @@ public final class PageScripts {
 
     private PageScripts(Context context) throws IOException {
         String css = read(context, "web/app.css");
+        // The theme only changes in the settings, and MainActivity comes back recreated from there.
+        for (String stylesheet : AppTheme.webStylesheets(context)) {
+            css += "\n" + read(context, stylesheet);
+        }
         injectStyle = "(function(){"
                 + "if(document.getElementById('app-injected-style'))return;"
                 + "var s=document.createElement('style');"

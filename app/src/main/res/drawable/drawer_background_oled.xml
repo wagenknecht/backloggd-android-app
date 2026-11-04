@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The OLED drawer: a hair above black, with a fine edge on the side facing the page. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <solid android:color="@color/oled_border_subtle" />
+        </shape>
+    </item>
+    <item android:end="1dp">
+        <shape>
+            <solid android:color="@color/oled_drawer" />
+        </shape>
+    </item>
+</layer-list>

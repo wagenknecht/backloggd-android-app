@@ -13,4 +13,19 @@
         <item>240</item>
         <item>-1</item>
     </string-array>
+
+    <string-array name="theme_entries">
+        <item>@string/theme_backloggd</item>
+        <item>@string/theme_oled</item>
+        <item>@string/theme_oled_backloggd</item>
+        <item>@string/theme_green</item>
+    </string-array>
+
+    <!-- The values in AppTheme, in the order of the entries above. -->
+    <string-array name="theme_values" translatable="false">
+        <item>backloggd</item>
+        <item>oled</item>
+        <item>oled_backloggd</item>
+        <item>green</item>
+    </string-array>
 </resources>

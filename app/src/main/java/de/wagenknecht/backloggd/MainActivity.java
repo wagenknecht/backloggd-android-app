@@ -53,6 +53,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -64,6 +65,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import de.wagenknecht.backloggd.util.AppTheme;
 import de.wagenknecht.backloggd.util.BackloggdUrls;
 import de.wagenknecht.backloggd.util.PageScripts;
 import de.wagenknecht.backloggd.util.SystemBars;
@@ -125,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
 
     /** What the app runs on Backloggd pages, from assets/web/. */
     private PageScripts scripts;
+    /** The theme this activity was created with; a different one in the settings recreates it. */
+    private String appliedTheme;
 
     /**
      * What the page may tell the app. Every frame sees it, ads included, so it only ever takes
@@ -172,6 +176,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
+        // After the splash screen, which switches to the default app theme.
+        appliedTheme = AppTheme.apply(this);
         super.onCreate(savedInstanceState);
         // Hold the splash until the first page is drawn, so the start never shows an empty WebView.
         long splashUntil = SystemClock.uptimeMillis() + SPLASH_MAX_MS;
@@ -190,8 +196,10 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh = findViewById(R.id.swipeRefresh);
         Button retryButton = findViewById(R.id.retryButton);
 
-        swipeRefresh.setColorSchemeResources(R.color.back_pink);
-        swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.back_secondary);
+        swipeRefresh.setColorSchemeColors(
+                MaterialColors.getColor(swipeRefresh, androidx.appcompat.R.attr.colorPrimary));
+        swipeRefresh.setProgressBackgroundColorSchemeColor(MaterialColors.getColor(
+                swipeRefresh, com.google.android.material.R.attr.colorSurfaceContainerHigh));
         swipeRefresh.setOnRefreshListener(() -> myWeb.reload());
         // A pull inside an open dialog that is already at its top would reload the page and throw
         // away whatever was typed into it. Pulls that scroll the dialog never reach this far, the
@@ -214,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
         // that holds the login has no business reading them.
         myWeb.getSettings().setAllowFileAccess(false);
         // The WebView is white until the first paint; match the site instead.
-        myWeb.setBackgroundColor(ContextCompat.getColor(this, R.color.back_primary));
+        myWeb.setBackgroundColor(MaterialColors.getColor(myWeb, android.R.attr.colorBackground));
         // Pull-to-refresh is the overscroll gesture here. The page's own scrollbars are hidden via
         // CSS; the WebView's native one, which fades out after scrolling, stays.
         myWeb.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -389,6 +397,15 @@ public class MainActivity extends AppCompatActivity {
     private void restorePage(@NonNull Bundle savedInstanceState) {
         String url = savedInstanceState.getString(STATE_URL);
         myWeb.loadUrl(BackloggdUrls.isSafeToLoad(url) ? url : BACKLOGGD_URL);
+    }
+
+    /** Back from the app settings, where the theme may have changed. */
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        if (!appliedTheme.equals(AppTheme.get(this))) {
+            recreate();
+        }
     }
 
     @Override

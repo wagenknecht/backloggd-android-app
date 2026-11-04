@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Line between the bars and the page; only themes whose bars would blend in draw one. -->
+    <attr name="appBarDividerColor" format="color" />
+    <!-- Background of the navigation drawer, a colour or a drawable. -->
+    <attr name="appDrawerBackground" format="reference|color" />
+</resources>

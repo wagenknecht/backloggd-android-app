@@ -34,6 +34,43 @@
     <color name="back_on_surface">#E8ECF0</color>
     <color name="back_pink_container">#442735</color> <!-- back_pink zu 20 % über back_primary -->
 
+    <!--
+        OLED-Themes: Neutral-Palette von shadcn/ui (Tailwind neutral) mit reinem Schwarz als
+        Hintergrund. OLED bleibt schwarz-weiß, OLED Pink nimmt den Akzent aus dem
+        Rose-Theme von shadcn/ui. Gleiche Werte wie assets/web/theme-oled*.css.
+    -->
+    <color name="oled_background">#000000</color>
+    <color name="oled_card">#171717</color>
+    <color name="oled_drawer">#0A0A0A</color> <!-- neutral-950, knapp über Schwarz -->
+    <color name="oled_secondary">#262626</color>
+    <color name="oled_border">#404040</color>
+    <color name="oled_border_subtle">#262626</color>
+    <color name="oled_foreground">#FAFAFA</color>
+    <color name="oled_muted_foreground">#A1A1A1</color>
+    <color name="oled_primary_dk">#E5E5E5</color> <!-- neutral-200, primary von shadcn/ui -->
+    <color name="oled_on_primary">#171717</color> <!-- neutral-900, primary-foreground von shadcn/ui -->
+    <color name="oled_rose">#F43F5E</color> <!-- rose-500 -->
+    <color name="oled_rose_dk">#E11D48</color> <!-- rose-600 -->
+    <color name="oled_rose_container">#310D13</color> <!-- rose-500 zu 20 % über Schwarz -->
+    <color name="oled_destructive">#FF6467</color>
+
+    <!--
+        Forest-Theme (gespeichert als "green"): Flächen im Farbton von Tailwind green (142°),
+        deutlich heller als OLED und bis zu den Buttons ansteigend, Akzent aus Tailwind amber.
+        Gleiche Werte wie assets/web/theme-green.css.
+    -->
+    <color name="green_background">#0E2014</color>
+    <color name="green_card">#152D1E</color>
+    <color name="green_secondary">#1D3A28</color>
+    <color name="green_border">#2B4F38</color>
+    <color name="green_foreground">#F0FDF4</color> <!-- green-50 -->
+    <color name="green_muted_foreground">#A5C0AF</color>
+    <color name="green_destructive">#FF6467</color>
+    <color name="green_primary">#FBBF24</color> <!-- amber-400 -->
+    <color name="green_primary_dk">#D97706</color> <!-- amber-600 -->
+    <color name="green_on_primary">#451A03</color> <!-- amber-950 -->
+    <color name="green_primary_container">#3D4017</color> <!-- amber-400 zu 20 % über green_background -->
+
     <!-- Aliase für referenzierte Farben -->
     <color name="back_field_selected">@color/back_pink_dk</color>
     <color name="back_type_played">@color/back_pink_dk</color>

@@ -21,6 +21,7 @@ import com.google.android.material.timepicker.TimeFormat;
 import java.util.Locale;
 
 import de.wagenknecht.backloggd.BuildConfig;
+import de.wagenknecht.backloggd.util.AppTheme;
 import de.wagenknecht.backloggd.worker.NotificationCheckWorker;
 import de.wagenknecht.backloggd.worker.WishlistCheckerWorker;
 
@@ -52,6 +53,18 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         .build();
                 listenForReminderTime(picker, preference);
                 picker.show(getChildFragmentManager(), TIME_PICKER_TAG);
+                return true;
+            });
+        }
+
+        ListPreference theme = findPreference(AppTheme.PREF_KEY);
+        if (theme != null) {
+            theme.setOnPreferenceChangeListener((preference, newValue) -> {
+                // Posted, so the new value is saved by the time the activity comes back.
+                // MainActivity follows once the user returns to it.
+                if (!newValue.equals(((ListPreference) preference).getValue())) {
+                    requireView().post(() -> requireActivity().recreate());
+                }
                 return true;
             });
         }

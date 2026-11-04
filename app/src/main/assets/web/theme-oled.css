@@ -1,0 +1,40 @@
+/*
+ * Surfaces of both OLED themes: pure black instead of the site's navy, and the neutral greys of
+ * shadcn/ui (its "neutral" dark palette, with the background taken down to #000) instead of the
+ * site's blue-tinted ones. The accent follows in theme-oled-mono.css (OLED) or
+ * theme-oled-backloggd.css (OLED Pink), then theme-shadcn.css with the rules all of the
+ * app's themes share. The status colours (completed, abandoned, ...) stay, they carry meaning.
+ *
+ * html:root, not :root: the app adds this before the page's own stylesheet has loaded, which then
+ * comes later in the document and would win over a selector of the same weight.
+ */
+html:root {
+    --back-primary: #000000;
+    --back-secondary: #171717;
+    --primary-surface: #000000;
+    --secondary-surface: #171717;
+    --back-highlight: #ffffff0d;
+
+    --back-field: #262626;
+    --back-field-highlight: #333333;
+    --back-field-background: #0a0a0a;
+    --back-field-border: #ffffff26;
+    --back-field-border-hover: #ffffff40;
+    --back-field-border-focus: #737373;
+    --back-field-placeholder: #737373;
+    --back-field-icon: #525252;
+    --back-field-icon-secondary: #737373;
+    --field-background-on-secondary: #262626;
+    --field-border-on-secondary: #404040;
+    --interact-background-on-secondary: #404040;
+    --back-dropdown-divider: #262626;
+
+    --back-interact: #404040;
+    --back-interact-secondary: #d4d4d4;
+
+    --back-text: #fafafa;
+    --back-text-review: #e5e5e5;
+    --back-text-secondary: #a1a1a1;
+    --back-text-disabled: #a1a1a161;
+    --back-link: #e5e5e5;
+}

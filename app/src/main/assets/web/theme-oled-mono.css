@@ -1,0 +1,62 @@
+/*
+ * OLED accent, after theme-oled.css: black and white only, like shadcn/ui's default, where
+ * the primary colour is near-white with dark text on it. Covers and the status colours
+ * (completed, abandoned, ...) keep theirs. See theme-oled.css for why html:root.
+ */
+html:root {
+    --back-pink-lt: #ffffff;
+    --back-pink: #fafafa;
+    --back-pink-dk: #e5e5e5;
+    --back-played: #d4d4d4;
+    --back-type-played: #d4d4d4;
+    /* shadcn's primary-foreground: dark text on the light accent. */
+    --back-btn-toggled-text: #171717;
+}
+
+/*
+ * The site hard-codes white text on its accent. With a light accent that would be white on
+ * white, so everything that sits on the accent gets dark text instead. The list comes from the
+ * site's rules that give an element the accent as background and carry text.
+ */
+.btn-main, .btn-main:hover,
+.backloggd-datepicker .air-datepicker-cell.-selected-,
+.info-badge-solid.style-primary,
+.tippy-box[data-theme~="backloggd-highlight"] .tippy-content,
+.btn-outline-interactive:hover,
+.sidebar .current-sort, .sidebar-sm .current-sort,
+#backlog-backers .row,
+.sidebar #filters-submit, .sidebar-sm #filters-submit,
+.logging-btns.large-log-btns .btn-play-fill .btn-play, .logging-btns.large-log-btns .log-btn.active,
+.logging-btns.small-log-btns .btn-play-fill .btn-play i, .logging-btns.small-log-btns .log-btn.active i,
+.backloggd-modal .modal-content .system input:checked + label,
+.backloggd-modal .modal__content .system input:checked + label,
+.user-tag, .friend-btn:hover, .hotwire-native .friend-btn.follow,
+.backloggd-table .badge-status.badge-status-tallied,
+#play-ratings .replay-indicator,
+.changelog-card.new .tag, .changelog-card.new .tag p,
+#journal-game-modal #log-toggle-buttons input:checked + label,
+#log-editor-full #log-toggle-buttons input:checked + label,
+#log-editor-mobile #log-toggle-buttons input:checked + label,
+#log-editor-native-mobile #log-toggle-buttons input:checked + label,
+#playthrough-modal #log-toggle-buttons input:checked + label,
+.datepicker.datepicker-inline .active, .datepicker.dropdown-menu .active,
+#backer-stats-info:hover .learn-more,
+.pill-navigation-row a.current,
+#toast-container .toast-error, #toast-container .toast-success,
+.play-type-bkg.played, .game-log-bkg.played,
+#playthrough-calendar .fc-event, #playthrough-calendar .fc-event .fc-event-main { color: #171717 !important; }
+
+/* The site fades the "Main Game" tag, which turns white with dark text into grey on grey. */
+#search-results .search-result-platforms .game-result-type.main_game {
+    background-color: var(--back-interact) !important;
+    color: var(--back-text) !important;
+}
+
+/* The grey switch keeps light text; the dark one above is only for the accent. */
+.segmented-control.segmented-control-secondary .segment.current { color: var(--back-text) !important; }
+
+/* The library side of the games/library switch is violet on the site. */
+.games-theme.library-theme { --primary-interact-color: var(--back-pink-dk) !important; }
+.segmented-control#user-games-mode-selector[data-segmented-control-active-value="library"] .segmented-control-indicator {
+    background-color: var(--back-pink-dk) !important;
+}

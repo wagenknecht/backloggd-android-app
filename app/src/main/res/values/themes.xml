@@ -48,6 +48,112 @@
         <item name="android:colorPrimaryDark">@color/back_primary</item>
 
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
+
+        <item name="appBarDividerColor">@android:color/transparent</item>
+        <item name="appDrawerBackground">@color/back_primary</item>
+    </style>
+
+    <!--
+        OLED from the app settings: pure black with shadcn/ui's neutral greys, and black and
+        white only, so the accent is near-white with dark text on it, as in shadcn's default.
+        Layouts take their colours from the roles, so overriding these is enough.
+    -->
+    <style name="Theme.Backloggd.Oled">
+        <item name="colorPrimary">@color/oled_foreground</item>
+        <item name="colorOnPrimary">@color/oled_on_primary</item>
+        <item name="colorPrimaryContainer">@color/oled_secondary</item>
+        <item name="colorOnPrimaryContainer">@color/oled_foreground</item>
+
+        <item name="colorSecondary">@color/oled_foreground</item>
+        <item name="colorOnSecondary">@color/oled_background</item>
+        <item name="colorSecondaryContainer">@color/oled_secondary</item>
+        <item name="colorOnSecondaryContainer">@color/oled_foreground</item>
+
+        <item name="colorTertiary">@color/oled_muted_foreground</item>
+        <item name="colorOnTertiary">@color/oled_background</item>
+
+        <item name="android:colorBackground">@color/oled_background</item>
+        <item name="colorOnBackground">@color/oled_foreground</item>
+        <item name="colorSurface">@color/oled_background</item>
+        <item name="colorOnSurface">@color/oled_foreground</item>
+        <item name="colorSurfaceVariant">@color/oled_secondary</item>
+        <item name="colorOnSurfaceVariant">@color/oled_muted_foreground</item>
+        <item name="colorSurfaceContainerLowest">@color/oled_background</item>
+        <item name="colorSurfaceContainerLow">@color/oled_background</item>
+        <item name="colorSurfaceContainer">@color/oled_background</item>
+        <item name="colorSurfaceContainerHigh">@color/oled_card</item>
+        <item name="colorSurfaceContainerHighest">@color/oled_secondary</item>
+        <item name="colorOutline">@color/oled_border</item>
+        <item name="colorOutlineVariant">@color/oled_border_subtle</item>
+        <item name="colorError">@color/oled_destructive</item>
+        <item name="colorControlActivated">@color/oled_foreground</item>
+        <item name="colorSurfaceInverse">@color/oled_foreground</item>
+        <item name="colorOnSurfaceInverse">@color/oled_background</item>
+        <item name="colorPrimaryInverse">@color/oled_primary_dk</item>
+
+        <item name="android:windowBackground">@color/oled_background</item>
+        <item name="android:colorPrimaryDark">@color/oled_background</item>
+
+        <item name="materialButtonStyle">@style/Widget.App.Button.Oled</item>
+
+        <!-- On pure black the bars and the drawer would melt into the page without these. -->
+        <item name="appBarDividerColor">@color/oled_border_subtle</item>
+        <item name="appDrawerBackground">@drawable/drawer_background_oled</item>
+    </style>
+
+    <!-- OLED Pink: the same black, with the rose of shadcn/ui's Rose theme as the accent. -->
+    <style name="Theme.Backloggd.Oled.Backloggd">
+        <item name="colorPrimary">@color/oled_rose</item>
+        <item name="colorOnPrimary">@color/oled_background</item>
+        <item name="colorPrimaryContainer">@color/oled_rose_container</item>
+        <item name="colorOnPrimaryContainer">@color/oled_rose</item>
+        <item name="colorControlActivated">@color/oled_rose</item>
+        <item name="colorPrimaryInverse">@color/oled_rose_dk</item>
+        <item name="materialButtonStyle">@style/Widget.App.Button.OledBackloggd</item>
+    </style>
+
+    <!--
+        Surfaces in Tailwind's green hue, clearly lighter than OLED, with an amber accent.
+    -->
+    <style name="Theme.Backloggd.Green">
+        <item name="colorPrimary">@color/green_primary</item>
+        <item name="colorOnPrimary">@color/green_on_primary</item>
+        <item name="colorPrimaryContainer">@color/green_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/green_primary</item>
+
+        <item name="colorSecondary">@color/green_foreground</item>
+        <item name="colorOnSecondary">@color/green_background</item>
+        <item name="colorSecondaryContainer">@color/green_secondary</item>
+        <item name="colorOnSecondaryContainer">@color/green_foreground</item>
+
+        <item name="colorTertiary">@color/green_muted_foreground</item>
+        <item name="colorOnTertiary">@color/green_background</item>
+
+        <item name="android:colorBackground">@color/green_background</item>
+        <item name="colorOnBackground">@color/green_foreground</item>
+        <item name="colorSurface">@color/green_background</item>
+        <item name="colorOnSurface">@color/green_foreground</item>
+        <item name="colorSurfaceVariant">@color/green_secondary</item>
+        <item name="colorOnSurfaceVariant">@color/green_muted_foreground</item>
+        <item name="colorSurfaceContainerLowest">@color/green_background</item>
+        <item name="colorSurfaceContainerLow">@color/green_background</item>
+        <item name="colorSurfaceContainer">@color/green_background</item>
+        <item name="colorSurfaceContainerHigh">@color/green_card</item>
+        <item name="colorSurfaceContainerHighest">@color/green_secondary</item>
+        <item name="colorOutline">@color/green_border</item>
+        <item name="colorOutlineVariant">@color/green_secondary</item>
+        <item name="colorError">@color/green_destructive</item>
+        <item name="colorControlActivated">@color/green_primary</item>
+        <item name="colorSurfaceInverse">@color/green_foreground</item>
+        <item name="colorOnSurfaceInverse">@color/green_background</item>
+        <item name="colorPrimaryInverse">@color/green_primary_dk</item>
+
+        <item name="android:windowBackground">@color/green_background</item>
+        <item name="android:colorPrimaryDark">@color/green_background</item>
+
+        <item name="materialButtonStyle">@style/Widget.App.Button.Green</item>
+
+        <item name="appDrawerBackground">@color/green_background</item>
     </style>
 
     <!-- Shown while the app starts; the app theme takes over once MainActivity is ready. -->
@@ -60,5 +166,19 @@
     <style name="Widget.App.Button" parent="Widget.Material3.Button">
         <item name="backgroundTint">@color/back_pink_dk</item>
         <item name="android:textColor">@color/white</item>
+    </style>
+
+    <style name="Widget.App.Button.Oled">
+        <item name="backgroundTint">@color/oled_primary_dk</item>
+        <item name="android:textColor">@color/oled_on_primary</item>
+    </style>
+
+    <style name="Widget.App.Button.OledBackloggd">
+        <item name="backgroundTint">@color/oled_rose_dk</item>
+    </style>
+
+
+    <style name="Widget.App.Button.Green">
+        <item name="backgroundTint">@color/green_primary_dk</item>
     </style>
 </resources>

@@ -1,0 +1,14 @@
+/*
+ * OLED Pink accent, after theme-oled.css: the site's pink becomes the rose of shadcn/ui's
+ * Rose theme. The site's high-contrast setting sets its own light pinks on .high-contrast, below
+ * :root, so those still win for whoever chose it. See theme-oled.css for why html:root.
+ */
+html:root {
+    /* Tailwind's rose-300, -500 and -600; white text on -600 still reads well. */
+    --back-pink-lt: #fda4af;
+    --back-pink: #f43f5e;
+    --back-pink-dk: #e11d48;
+    --back-played: #e11d48;
+    --back-type-played: #e11d48;
+    --back-btn-toggled-text: #ffffff;
+}

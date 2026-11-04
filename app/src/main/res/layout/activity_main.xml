@@ -37,7 +37,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="top"
                 android:visibility="gone"
-                app:indicatorColor="@color/back_pink"
+                app:indicatorColor="?attr/colorPrimary"
                 app:trackColor="@android:color/transparent"
                 app:trackThickness="3dp" />
 
@@ -69,11 +69,16 @@
 
         </FrameLayout>
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/appBarDividerColor" />
+
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNav"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:backgroundTint="@color/back_primary"
+            app:backgroundTint="?attr/colorSurface"
             app:itemIconTint="@color/bottom_nav_item"
             app:itemTextColor="@color/bottom_nav_item"
             app:labelVisibilityMode="labeled"
@@ -86,7 +91,7 @@
         android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:background="@color/back_primary"
+        android:background="?attr/appDrawerBackground"
         android:fitsSystemWindows="true"
         app:itemHorizontalPadding="20dp"
         app:itemIconTint="@color/drawer_item_text"
