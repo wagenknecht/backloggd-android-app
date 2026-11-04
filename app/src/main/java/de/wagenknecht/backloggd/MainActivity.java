@@ -681,10 +681,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** @return false when the app was already closing and the dialog could not come up */
-    private boolean showUpdateDialog(@NonNull UpdateChecker.Release release) {
+    private void showUpdateDialog(@NonNull UpdateChecker.Release release) {
         if (isFinishing() || isDestroyed()) {
-            return false;
+            return;
         }
         // Without an APK asset the releases page is the next best landing spot.
         String downloadUrl = release.apkUrl != null ? release.apkUrl : GITHUB_RELEASES_LATEST;
@@ -702,7 +701,6 @@ public class MainActivity extends AppCompatActivity {
                         (dialog, which) -> openExternally(Uri.parse(downloadUrl)))
                 .setNegativeButton(R.string.update_later, null)
                 .show();
-        return true;
     }
 
     /**

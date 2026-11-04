@@ -5,7 +5,6 @@ import static de.wagenknecht.backloggd.ApiConstants.GITHUB_LATEST_RELEASE_API_UR
 import static de.wagenknecht.backloggd.ApiConstants.GITHUB_RELEASE_BY_TAG_API_URL;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Handler;
@@ -46,9 +45,6 @@ public final class UpdateChecker {
     private static final String TAG = "UpdateChecker";
     private static final int TIMEOUT_MS = 15000;
     private static final String PREF_LAST_SEEN_VERSION = "last_seen_version";
-    private static final String PREF_LAST_CHECK = "last_update_check";
-    /** Releases come every few weeks, and GitHub allows 60 anonymous requests an hour per address. */
-    private static final long CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L;
     /** Written by the bundleChangelog Gradle task from fastlane/.../changelogs/<versionCode>.txt. */
     private static final String BUNDLED_CHANGELOG_ASSET = "changelog.txt";
     private static final Pattern CHANGELOG_FILE = Pattern.compile("(\\d+)\\.txt");
@@ -71,9 +67,8 @@ public final class UpdateChecker {
     }
 
     public interface Callback {
-        /** @return whether the user got to see it; if not, the next start offers it again */
         @MainThread
-        boolean onUpdateAvailable(@NonNull Release release);
+        void onUpdateAvailable(@NonNull Release release);
     }
 
     public interface NotesCallback {
@@ -154,34 +149,28 @@ public final class UpdateChecker {
     }
 
     /**
-     * Looks for a newer release in the background, at most once a day. The callback runs on the
-     * main thread and only fires when an update actually exists.
+     * Looks for a newer release in the background. Called on every app start, so an update keeps
+     * coming back until it is installed; GitHub allows 60 anonymous requests an hour per address,
+     * far more than anyone starts the app. The callback runs on the main thread and only fires
+     * when an update actually exists.
      */
     public static void checkAsync(@NonNull Context context, @NonNull Callback callback) {
         String installedVersion = getInstalledVersion(context);
         if (installedVersion == null) {
             return;
         }
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        if (!isCheckDue(prefs.getLong(PREF_LAST_CHECK, 0), System.currentTimeMillis())) {
-            Log.d(TAG, "Checked for updates less than a day ago, skipping.");
-            return;
-        }
 
         Handler mainHandler = new Handler(Looper.getMainLooper());
         new Thread(() -> {
             JSONObject releaseJson = fetchLatestRelease();
-            // Failed checks do not count; the next start tries again. So does an update the user
-            // never got to see, e.g. because they left the app before the dialog came up.
+            // A failed check stays silent; the next start tries again.
             if (releaseJson == null) {
                 return;
             }
-            Runnable rememberCheck = () -> prefs.edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply();
 
             String latestVersion = releaseJson.optString("tag_name", "");
             if (latestVersion.isEmpty()) {
                 Log.w(TAG, "Latest release has no tag_name, skipping update check.");
-                rememberCheck.run();
                 return;
             }
 
@@ -189,7 +178,6 @@ public final class UpdateChecker {
             Log.d(TAG, "Installed app version: " + installedVersion);
 
             if (!isNewerVersion(latestVersion, installedVersion)) {
-                rememberCheck.run();
                 return;
             }
 
@@ -200,18 +188,8 @@ public final class UpdateChecker {
                     : toPlainText(releaseJson.optString("body", ""));
 
             Release release = new Release(latestVersion, findApkAssetUrl(releaseJson), notes);
-            mainHandler.post(() -> {
-                if (callback.onUpdateAvailable(release)) {
-                    rememberCheck.run();
-                }
-            });
+            mainHandler.post(() -> callback.onUpdateAvailable(release));
         }).start();
-    }
-
-    /** A day after the last successful check, or at once if the clock has been set back since. */
-    @VisibleForTesting
-    static boolean isCheckDue(long lastCheckMillis, long nowMillis) {
-        return nowMillis < lastCheckMillis || nowMillis - lastCheckMillis >= CHECK_INTERVAL_MS;
     }
 
     @Nullable
