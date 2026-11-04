@@ -23,7 +23,7 @@
     <string name="drawer_backloggd_settings">Backloggd Settings</string>
     <string name="drawer_app_settings">App Settings</string>
     <string name="drawer_logout">Logout</string>
-    <string name="drawer_donate">Donate</string>
+    <string name="drawer_donate">Support the App</string>
     <string name="drawer_feedback">App Feedback</string>
     <string name="feedback_no_email_app">No email app installed.</string>
     <string name="no_app_for_link">No app found to open this link.</string>
