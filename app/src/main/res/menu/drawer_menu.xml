@@ -72,6 +72,10 @@
     </group>
     <group android:id="@+id/drawer_group_about">
         <item
+            android:id="@+id/drawer_donate"
+            android:icon="@drawable/ic_drawer_donate"
+            android:title="@string/drawer_donate" />
+        <item
                 android:id="@+id/drawer_feedback"
                 android:icon="@drawable/ic_drawer_feedback"
                 android:title="@string/drawer_feedback" />

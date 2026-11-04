@@ -3,6 +3,7 @@ package de.wagenknecht.backloggd;
 import static de.wagenknecht.backloggd.ApiConstants.GITHUB_RELEASES_LATEST;
 import static de.wagenknecht.backloggd.ApiConstants.GITHUB_REPO_URL;
 import static de.wagenknecht.backloggd.ApiConstants.BACKLOGGD_URL;
+import static de.wagenknecht.backloggd.ApiConstants.DONATE_URL;
 import static de.wagenknecht.backloggd.ApiConstants.LOGIN_URL;
 import static de.wagenknecht.backloggd.ApiConstants.LOGOUT_URL;
 import static de.wagenknecht.backloggd.ApiConstants.NOTIFICATION_URL;
@@ -629,6 +630,8 @@ public class MainActivity extends AppCompatActivity {
             } else if (id == R.id.drawer_logout) {
                 UsernameHelper.clearCached(this);
                 myWeb.loadUrl(LOGOUT_URL);
+            } else if (id == R.id.drawer_donate) {
+                openExternally(Uri.parse(DONATE_URL));
             } else if (id == R.id.drawer_feedback) {
                 Intent feedback = new Intent(Intent.ACTION_SENDTO,
                         Uri.parse("mailto:dev.wagenknecht@gmail.com"));
