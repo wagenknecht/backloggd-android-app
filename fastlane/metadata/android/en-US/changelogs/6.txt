@@ -1,0 +1,6 @@
+• New: Themes in Backloggd App
+  – OLED: pure black and white, easy on OLED screens and battery
+  – OLED Pink: the same black with a pink accent
+  – Forest: dark green with a golden accent
+  – Backloggd: the original look, still the default
+• New: Support the App in the menu, via Ko-fi
